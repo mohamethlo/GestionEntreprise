@@ -48,14 +48,14 @@ def create_app():
 
     # --- Enregistrement Blueprints ---
     from auth import auth_bp
-    from routes import main_bp, billing
+    from routes import register_blueprints
+
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
-    app.register_blueprint(main_bp, url_prefix='/api/main')
-    app.register_blueprint(billing, url_prefix='/api/billing')
+    register_blueprints(app)  # tous les autres blueprints (users, roles, billing, etc.)
 
     # --- Initialisation DB ---
     with app.app_context():
-        import models
+        import models  # pour que SQLAlchemy connaisse les tables
         db.create_all()
         seed_data()
 

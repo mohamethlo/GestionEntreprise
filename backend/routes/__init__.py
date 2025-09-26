@@ -1,0 +1,10 @@
+from flask import Blueprint
+
+# Import des sous-blueprints
+from .users import users_bp
+from .roles import roles_bp
+
+def register_blueprints(app):
+    """Enregistre tous les blueprints du projet"""
+    app.register_blueprint(users_bp, url_prefix="/api/users")
+    app.register_blueprint(roles_bp, url_prefix="/api/roles")
