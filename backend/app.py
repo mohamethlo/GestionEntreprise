@@ -10,36 +10,39 @@ from flask_jwt_extended import JWTManager
 # Chargement des variables d'environnement
 load_dotenv()
 
+
 def create_app():
+    """Factory de création de l'application Flask"""
     app = Flask(__name__)
 
-    # Configurations de base
+    # --- CONFIG de base ---
     app.secret_key = os.getenv("SECRET_KEY", "secret_dev")
     app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
     # --- CONFIG API ---
-    CORS(app)  # Autoriser les appels depuis React
-
+    CORS(app, resources={r"/api/*": {"origins": "*"}})  # Autoriser les appels depuis React
     app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "jwt_dev_secret")
-    jwt = JWTManager(app)
+    JWTManager(app)
 
-    # --- Config Email ---
-    app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER')
-    app.config['MAIL_PORT'] = os.getenv('MAIL_PORT')
-    app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS')
-    app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
-    app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
-    app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_USERNAME')
+    # --- CONFIG Email ---
+    app.config.update(
+        MAIL_SERVER=os.getenv('MAIL_SERVER'),
+        MAIL_PORT=os.getenv('MAIL_PORT'),
+        MAIL_USE_TLS=os.getenv('MAIL_USE_TLS'),
+        MAIL_USERNAME=os.getenv('MAIL_USERNAME'),
+        MAIL_PASSWORD=os.getenv('MAIL_PASSWORD'),
+        MAIL_DEFAULT_SENDER=os.getenv('MAIL_USERNAME')
+    )
 
-    # --- Config DB ---
+    # --- CONFIG DB ---
     app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "sqlite:///db.sqlite3")
     app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"pool_recycle": 300, "pool_pre_ping": True}
 
-    # Upload
-    app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+    # --- CONFIG Upload ---
+    app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB
     app.config['UPLOAD_FOLDER'] = 'uploads'
 
-    # Init extensions
+    # --- Init extensions ---
     db.init_app(app)
     mail.init_app(app)
 
@@ -54,39 +57,44 @@ def create_app():
     with app.app_context():
         import models
         db.create_all()
-
-        from models import User, Role
-        from werkzeug.security import generate_password_hash
-
-        # Création des rôles si inexistant
-        if not Role.query.first():
-            roles = [
-                Role(name='Administrateur', permissions='all'),
-                Role(name='Commercial', permissions='attendance,clients,interventions'),
-                Role(name='Technicien', permissions='attendance,interventions'),
-                Role(name='Dev_administration', permissions='attendance'),
-                Role(name='administration', permissions='attendance,interventions')
-            ]
-            db.session.add_all(roles)
-            db.session.commit()
-
-        # Création de l’admin si inexistant
-        if not User.query.filter_by(email='admin@entreprise.fr').first():
-            admin_role = Role.query.filter_by(name='Administrateur').first()
-            admin_user = User(
-                username='admin',
-                email='admin@entreprise.fr',
-                nom='Administrateur',
-                prenom='Système',
-                password_hash=generate_password_hash('admin123'),
-                role=admin_role,
-                is_active=True
-            )
-            db.session.add(admin_user)
-            db.session.commit()
-            logging.info("✅ Admin par défaut créé: admin@entreprise.fr / admin123")
+        seed_data()
 
     return app
+
+
+def seed_data():
+    """Insère les rôles et l’utilisateur admin par défaut si non existants"""
+    from models import User, Role
+    from werkzeug.security import generate_password_hash
+
+    # Création des rôles
+    if not Role.query.first():
+        roles = [
+            Role(name='Administrateur', permissions='all'),
+            Role(name='Commercial', permissions='attendance,clients,interventions'),
+            Role(name='Technicien', permissions='attendance,interventions'),
+            Role(name='Dev_administration', permissions='attendance'),
+            Role(name='Administration', permissions='attendance,interventions')
+        ]
+        db.session.add_all(roles)
+        db.session.commit()
+        logging.info("✅ Rôles créés avec succès")
+
+    # Création admin
+    if not User.query.filter_by(email='admin@entreprise.fr').first():
+        admin_role = Role.query.filter_by(name='Administrateur').first()
+        admin_user = User(
+            username='admin',
+            email='admin@entreprise.fr',
+            nom='Administrateur',
+            prenom='Système',
+            password_hash=generate_password_hash('admin123'),
+            role=admin_role,
+            is_active=True
+        )
+        db.session.add(admin_user)
+        db.session.commit()
+        logging.info("✅ Admin par défaut créé: admin@entreprise.fr / admin123")
 
 
 if __name__ == "__main__":
