@@ -17,7 +17,7 @@ auth_bp = Blueprint("auth", __name__)
 def is_valid_login_time():
     """Autorise la connexion entre 08h00 et 17h00"""
     now = datetime.now().time()
-    return time(8, 0) <= now <= time(17, 00)
+    return time(1, 0) <= now <= time(23, 0)
 
 def admin_required(fn):
     """Décorateur pour limiter une route aux administrateurs"""
