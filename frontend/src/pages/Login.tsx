@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
+import Swal from "sweetalert2";
 
 const netsystemeLogo = "/logo/netsysteme.png";
 
@@ -13,26 +13,56 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    // Simulate login
-    setTimeout(() => {
-      toast({
-        title: "Connexion réussie",
-        description: "Redirection vers le tableau de bord...",
+
+    try {
+      const response = await fetch("http://localhost:5000/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
       });
-      navigate("/dashboard");
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.msg || "Échec de la connexion");
+      }
+
+      const data = await response.json();
+      const token = data.access_token;
+
+      // Sauvegarde du token
+      localStorage.setItem("token", token);
+
+      // ✅ SweetAlert2 succès
+      Swal.fire({
+        icon: "success",
+        title: "Connexion réussie ✅",
+        text: "Redirection vers le tableau de bord...",
+        timer: 2000,
+        showConfirmButton: false,
+      });
+
+      // Redirection après 2 sec
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 2000);
+    } catch (err: any) {
+      // ❌ SweetAlert2 erreur
+      Swal.fire({
+        icon: "error",
+        title: "Erreur de connexion ❌",
+        text: err.message || "Veuillez vérifier vos identifiants.",
+      });
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-surface">
-      {/* Background Effects */}
       <div className="fixed inset-0 overflow-hidden">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse" />
         <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-commercial/10 rounded-full blur-3xl animate-pulse delay-1000" />
