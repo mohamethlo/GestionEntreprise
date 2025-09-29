@@ -33,14 +33,14 @@ const DashboardContent = () => {
     }, []);
 
     return (
-        <div className="p-6 space-y-6">
+        <div className="p-6 space-y-6" style={{backgroundColor: "white"}}>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Left Column - Performance */}
                 <div className="space-y-6">
                     <div>
                         <div className="flex items-center gap-2 mb-4">
                             <Users className="h-5 w-5 text-warning" />
-                            <h2 className="text-lg font-semibold">Ressources Humaines en Temps Réel</h2>
+                            <h2 className="text-lg font-semibold" style={{color:"black", fontSize:"25px"}}>Ressources Humaines en Temps Réel</h2>
                         </div>
                         <div className="p-4 bg-success/10 border border-success/20 rounded-lg">
                             <div className="flex items-center gap-2 text-success">
@@ -53,7 +53,7 @@ const DashboardContent = () => {
                     <div>
                         <div className="flex items-center gap-2 mb-4">
                             <FileSearch className="h-5 w-5 text-warning" />
-                            <h2 className="text-lg font-semibold">Indicateurs Clés RH</h2>
+                            <h2 className="text-lg font-semibold" style={{color:"black", fontSize:"25px"}}>Indicateurs Clés RH</h2>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             {performanceData.map((item, index) => (
