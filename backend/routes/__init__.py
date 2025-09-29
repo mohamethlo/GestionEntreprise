@@ -7,6 +7,7 @@ from .roles import roles_bp
 from .client import client_bp
 from .intervention import intervention_bp
 from .attendance import attendance_bp
+from .work_locations import work_locations_bp  
 
 
 def register_blueprints(app: Flask):
@@ -18,5 +19,5 @@ def register_blueprints(app: Flask):
     app.register_blueprint(client_bp, url_prefix="/api/clients")
     app.register_blueprint(intervention_bp, url_prefix="/api/interventions")
 
-    # Blueprint pointage
     app.register_blueprint(attendance_bp, url_prefix="/api/attendance")
+    app.register_blueprint(work_locations_bp, url_prefix="/api/work_locations")
