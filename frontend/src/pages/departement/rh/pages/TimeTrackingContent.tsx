@@ -15,8 +15,6 @@ import {
   ListChecks,
   UserCheck,
   MinusCircle,
-  ArrowLeft,
-  User,
 } from "lucide-react";
 import GoogleMapComponent from './GoogleMapComponent';
 
@@ -50,7 +48,7 @@ interface UserStatus {
 }
 
 // ===========================================
-// DONNÉES SIMULÉES (MOCK) - Logique du collègue
+// DONNÉES SIMULÉES (MOCK)
 // ===========================================
 
 const MOCK_HISTORY: AttendanceRecord[] = [
@@ -82,15 +80,14 @@ const calculateTotalHours = (checkInStr: string | null, checkOutStr: string | nu
   }
 };
 
-// Simulation de SweetAlert2 avec alert natif
-const showSwalAlert = (config: { 
-  title: string; 
-  html?: string; 
-  text?: string; 
-  icon: string; 
-  confirmButtonText?: string; 
-  timer?: number; 
-  toast?: boolean; 
+const showSwalAlert = (config: {
+  title: string;
+  html?: string;
+  text?: string;
+  icon: string;
+  confirmButtonText?: string;
+  timer?: number;
+  toast?: boolean;
 }) => {
   const message = config.html || config.text || config.title;
   alert(`${config.icon.toUpperCase()}: ${message}`);
@@ -113,12 +110,15 @@ const TimeTrackingContent = () => {
     isFinished: false,
   });
 
-  const [userLocation, setUserLocation] = useState({
-    latitude: 48.8584,
-    longitude: 2.2945,
-    name: "Localisation en cours...",
+  const [userLocation, setUserLocation] = useState<{
+    latitude: number | null,
+    longitude: number | null,
+    name: string,
+  }>({
+    latitude: null,
+    longitude: null,
+    name: "Acquisition de la position...",
   });
-  const [isLocating, setIsLocating] = useState(false);
 
   // Horloge en temps réel
   useEffect(() => {
@@ -126,58 +126,47 @@ const TimeTrackingContent = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Fonction pour obtenir la VRAIE position (ta logique)
-  const handleGetLocation = useCallback(() => {
-    setIsLocating(true);
-    
+  // Surveillance de la position en temps réel
+  useEffect(() => {
+    let watchId: number;
+
     if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
+      watchId = navigator.geolocation.watchPosition(
         (position) => {
-          const userLat = position.coords.latitude;
-          const userLon = position.coords.longitude;
-          
-          // Utilisation de la vraie position
+          const { latitude, longitude } = position.coords;
           setUserLocation({
-            latitude: userLat,
-            longitude: userLon,
-            name: `Position réelle (${userLat.toFixed(4)}°, ${userLon.toFixed(4)}°)`,
-          });
-          setIsLocating(false);
-          
-          showSwalAlert({
-            title: "Position Mise à Jour ✅",
-            text: `Position réelle enregistrée.`,
-            icon: "success",
-            timer: 2000,
-            toast: true,
+            latitude,
+            longitude,
+            name: `Position (${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°)`,
           });
         },
         (error) => {
-          console.error("Erreur de géolocalisation:", error);
-          setIsLocating(false);
-          
-          // Fallback : position simulée si refus ou erreur
-          const newLatitude = 48.8584 + (Math.random() - 0.5) * 0.01;
-          const newLongitude = 2.2945 + (Math.random() - 0.5) * 0.01;
-          
+          console.error("Erreur de géolocalisation continue:", error);
           setUserLocation({
-            latitude: newLatitude,
-            longitude: newLongitude,
-            name: "Position simulée (permission refusée)",
+            latitude: 48.8584,
+            longitude: 2.2945,
+            name: "Erreur - Position de secours",
           });
-          
-          alert(`Erreur: ${error.message}. Position simulée utilisée.`);
+          alert(`Erreur de localisation: ${error.message}.`);
         },
-        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     } else {
-      setIsLocating(false);
       alert("La géolocalisation n'est pas supportée par ce navigateur.");
     }
+
+    return () => {
+      if (watchId) {
+        navigator.geolocation.clearWatch(watchId);
+      }
+    };
   }, []);
 
-  // Logique de pointage d'entrée (logique du collègue)
   const handleCheckIn = () => {
+    if (!userLocation.latitude || !userLocation.longitude) {
+      alert("Votre position n'est pas encore disponible. Veuillez attendre un instant.");
+      return;
+    }
     setIsActionLoading(true);
     const now = new Date();
     const checkInTime = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
@@ -200,7 +189,6 @@ const TimeTrackingContent = () => {
     }, 1500);
   };
 
-  // Logique de pointage de sortie
   const handleCheckOut = () => {
     setIsActionLoading(true);
     const now = new Date();
@@ -236,49 +224,47 @@ const TimeTrackingContent = () => {
     }, 1500);
   };
 
-  // État du bouton de pointage 
   const ButtonState = useMemo(() => {
-    if (isActionLoading) 
-      return { 
-        text: "Chargement...", 
-        icon: <Loader2 className="mr-2 h-4 w-4 animate-spin" />, 
-        action: () => {}, 
-        variant: "default" as const, 
+    if (isActionLoading)
+      return {
+        text: "Chargement...",
+        icon: <Loader2 className="mr-2 h-4 w-4 animate-spin" />,
+        action: () => {},
+        variant: "default" as const,
         disabled: true,
         className: ""
       };
 
-    if (currentStatus.isFinished) 
-      return { 
-        text: "Journée Terminée", 
-        icon: <CheckCircle2 className="mr-2 h-4 w-4" />, 
-        action: () => {}, 
-        variant: "default" as const, 
+    if (currentStatus.isFinished)
+      return {
+        text: "Journée Terminée",
+        icon: <CheckCircle2 className="mr-2 h-4 w-4" />,
+        action: () => {},
+        variant: "default" as const,
         disabled: true,
         className: "bg-gray-400"
       };
 
-    if (currentStatus.isPunchedIn) 
-      return { 
-        text: "Pointer la Sortie", 
-        icon: <LogOut className="mr-2 h-4 w-4" />, 
-        action: handleCheckOut, 
-        variant: "destructive" as const, 
+    if (currentStatus.isPunchedIn)
+      return {
+        text: "Pointer la Sortie",
+        icon: <LogOut className="mr-2 h-4 w-4" />,
+        action: handleCheckOut,
+        variant: "destructive" as const,
         disabled: false,
         className: "bg-red-500 hover:bg-red-600"
       };
 
-    return { 
-      text: "Pointer l'Entrée", 
-      icon: <LogIn className="mr-2 h-4 w-4" />, 
-      action: handleCheckIn, 
-      variant: "default" as const, 
-      disabled: false,
-      className: "bg-green-600 hover:bg-green-700"
+    return {
+      text: "Pointer l'Entrée",
+      icon: <LogIn className="mr-2 h-4 w-4" />,
+      action: handleCheckIn,
+      variant: "default" as const,
+      disabled: !userLocation.latitude,
+      className: !userLocation.latitude ? "bg-gray-400" : "bg-green-600 hover:bg-green-700"
     };
-  }, [isActionLoading, currentStatus]);
+  }, [isActionLoading, currentStatus, userLocation.latitude]);
 
-  // Calcul de la durée totale
   const todayTotalHours = useMemo(() => {
     const todayDate = new Date().toISOString().split('T')[0];
     const latestRecord = history.find(r => r.date === todayDate);
@@ -289,8 +275,7 @@ const TimeTrackingContent = () => {
   }, [history]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-surface">
-
+    <div className="min-h-screen bg-gradient-to-br from-background to-surface" style={{backgroundColor: "white"}}>
       <div className="container mx-auto p-6 space-y-6">
         {/* Section Pointage du jour et Carte */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -320,7 +305,7 @@ const TimeTrackingContent = () => {
                 </div>
               )}
 
-              <div className="text-4xl font-extrabold text-primary">
+              <div className="text-4xl font-extrabold text-primary text-center">
                 {time.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
               </div>
 
@@ -343,41 +328,33 @@ const TimeTrackingContent = () => {
             </CardContent>
           </Card>
 
-          {/*géolocalisation */}
+          {/* Géolocalisation */}
           <Card className="shadow-lg border-t-4 border-t-primary/70">
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center gap-2 text-xl font-bold text-primary/80">
                 <MapPin className="w-5 h-5" />
-                Votre position
+                Votre position en temps réel
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-
-              {/* Carte Google Maps avec la vraie position */}
-              <GoogleMapComponent
-                latitude={userLocation.latitude}
-                longitude={userLocation.longitude}
-              />
-
-              <Button
-                onClick={handleGetLocation}
-                disabled={isLocating}
-                variant="outline"
-                className="w-full"
-              >
-                {isLocating ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" /> Localisation...
-                  </>
-                ) : (
-                  <>
-                    <MapPin className="h-4 w-4 mr-2" /> Obtenir ma position réelle
-                  </>
-                )}
-              </Button>
-
+              {userLocation.latitude && userLocation.longitude ? (
+                <GoogleMapComponent
+                  latitude={userLocation.latitude}
+                  longitude={userLocation.longitude}
+                />
+              ) : (
+                <div className="h-64 flex items-center justify-center bg-gray-100 rounded-lg">
+                  <div className="text-center text-gray-500">
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+                    <p>{userLocation.name}</p>
+                  </div>
+                </div>
+              )}
+              <div className="text-center p-2 bg-blue-50 rounded-md">
+                <p className="text-sm font-semibold text-blue-700">{userLocation.name}</p>
+              </div>
               <p className="text-xs text-muted-foreground text-center">
-                *Utilise la géolocalisation réelle du navigateur
+                *Votre position est mise à jour automatiquement.
               </p>
             </CardContent>
           </Card>
@@ -450,61 +427,60 @@ const TimeTrackingContent = () => {
           </Card>
         </div>
 
-       {/* Historique des pointages */}
-      <div className="bg-surface rounded-lg shadow-sm border border-primary/20 overflow-hidden">
-        <div className="p-4 border-b border-primary/20 bg-surface/50">
-          <h3 className="text-lg font-semibold text-primary flex items-center gap-2">
-            <ListChecks className="h-5 w-5 text-primary" />
-            Historique des pointages
-          </h3>
-          <p className="text-sm text-muted-foreground">Derniers enregistrements de présence</p>
-        </div>
+        {/* Historique des pointages */}
+        <div className="bg-surface rounded-lg shadow-sm border border-primary/20 overflow-hidden">
+          <div className="p-4 border-b border-primary/20 bg-surface/50">
+            <h3 className="text-lg font-semibold text-primary flex items-center gap-2">
+              <ListChecks className="h-5 w-5 text-primary" />
+              Historique des pointages
+            </h3>
+            <p className="text-sm text-muted-foreground">Derniers enregistrements de présence</p>
+          </div>
 
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-surface/60">
-                <TableHead className="text-white">Date</TableHead>
-                <TableHead className="text-white">Entrée</TableHead>
-                <TableHead className="text-white">Sortie</TableHead>
-                <TableHead className="text-white">Durée</TableHead>
-                <TableHead className="text-white">Lieu</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {history.map((record, index) => (
-                <TableRow 
-                  key={record.id} 
-                  className={index % 2 === 0 ? "bg-surface/80" : "bg-surface/70"}
-                >
-                  <TableCell className="font-medium text-white">
-                    {new Date(record.date).toLocaleDateString('fr-FR')}
-                  </TableCell>
-                  <TableCell className="text-white">
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-muted-foreground" />
-                      {record.check_in ? new Date(record.check_in).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '-'}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-white">
-                    {record.check_out ? new Date(record.check_out).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '-'}
-                  </TableCell>
-                  <TableCell className="text-white">
-                    {calculateTotalHours(record.check_in, record.check_out)}
-                  </TableCell>
-                  <TableCell className="text-white">
-                    <div className="flex items-center gap-1 text-xs">
-                      <MapPin className="h-3 w-3 text-muted-foreground" />
-                      {record.check_in_location || 'Non Défini'}
-                    </div>
-                  </TableCell>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-surface/60">
+                  <TableHead className="text-white">Date</TableHead>
+                  <TableHead className="text-white">Entrée</TableHead>
+                  <TableHead className="text-white">Sortie</TableHead>
+                  <TableHead className="text-white">Durée</TableHead>
+                  <TableHead className="text-white">Lieu</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {history.map((record, index) => (
+                  <TableRow 
+                    key={record.id} 
+                    className={index % 2 === 0 ? "bg-surface/80" : "bg-surface/70"}
+                  >
+                    <TableCell className="font-medium text-white">
+                      {new Date(record.date).toLocaleDateString('fr-FR')}
+                    </TableCell>
+                    <TableCell className="text-white">
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-muted-foreground" />
+                        {record.check_in ? new Date(record.check_in).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '-'}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-white">
+                      {record.check_out ? new Date(record.check_out).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '-'}
+                    </TableCell>
+                    <TableCell className="text-white">
+                      {calculateTotalHours(record.check_in, record.check_out)}
+                    </TableCell>
+                    <TableCell className="text-white">
+                      <div className="flex items-center gap-1 text-xs">
+                        <MapPin className="h-3 w-3 text-muted-foreground" />
+                        {record.check_in_location || 'Non Défini'}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </div>
-      </div>
-
       </div>
     </div>
   );
