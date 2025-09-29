@@ -275,7 +275,7 @@ const TimeTrackingContent = () => {
   }, [history]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-surface" style={{backgroundColor: "white"}}>
+    <div className="min-h-screen bg-gradient-to-br from-background to-surface">
       <div className="container mx-auto p-6 space-y-6">
         {/* Section Pointage du jour et Carte */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
