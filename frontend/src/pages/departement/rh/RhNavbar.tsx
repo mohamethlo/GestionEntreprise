@@ -10,7 +10,6 @@ export const NAV_ITEMS = [
   { key: "salary-advance", label: "Avance Salaire", icon: Wallet },
   { key: "employee-file", label: "Fiche Employé", icon: User },
   { key: "leaves", label: "Gestion des Congés", icon: Calendar },
-  { key: "recruitment", label: "Recrutement", icon: Briefcase },
   { key: "rh-documents", label: "Document RH", icon: FileText },
   { key: "new-hire", label: "Nouvelle Embauche", icon: UserPlus }
 ];
