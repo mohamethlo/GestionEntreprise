@@ -8,6 +8,9 @@ import Swal from "sweetalert2";
 
 const netsystemeLogo = "/logo/netsysteme.png";
 
+// Clé d'authentification harmonisée
+const AUTH_TOKEN_KEY = 'authToken'; 
+
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -26,35 +29,51 @@ const Login = () => {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.msg || "Échec de la connexion");
+        let errorMessage = "Échec de la connexion. Veuillez vérifier vos identifiants.";
+        try {
+            // Tente de lire le message d'erreur du backend (JSON)
+            const error = await response.json();
+            errorMessage = error.msg || errorMessage;
+        } catch (e) {
+            // Si la réponse n'est pas du JSON (ex: Erreur 500)
+            errorMessage = `Erreur de connexion (${response.status} ${response.statusText})`;
+        }
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
       const token = data.access_token;
 
-      // Sauvegarde du token
-      localStorage.setItem("token", token);
+      // ✅ CORRECTION JWT : Sauvegarde du token avec la clé 'authToken'
+      localStorage.setItem(AUTH_TOKEN_KEY, token);
 
-      // ✅ SweetAlert2 succès
+      // SweetAlert2 succès
       Swal.fire({
         icon: "success",
         title: "Connexion réussie ✅",
         text: "Redirection vers le tableau de bord...",
         timer: 2000,
         showConfirmButton: false,
+        customClass: {
+            confirmButton: 'bg-primary hover:bg-primary/90 text-white font-bold py-2 px-4 rounded',
+        },
+        buttonsStyling: false,
       });
 
-      // Redirection après 2 sec
+      // Redirection après 2 secondes
       setTimeout(() => {
         navigate("/dashboard");
       }, 2000);
     } catch (err: any) {
-      // ❌ SweetAlert2 erreur
+      // SweetAlert2 erreur
       Swal.fire({
         icon: "error",
         title: "Erreur de connexion ❌",
-        text: err.message || "Veuillez vérifier vos identifiants.",
+        text: err.message || "Une erreur inconnue est survenue.",
+        customClass: {
+            confirmButton: 'bg-primary hover:bg-primary/90 text-white font-bold py-2 px-4 rounded',
+        },
+        buttonsStyling: false,
       });
     } finally {
       setIsLoading(false);
@@ -88,9 +107,15 @@ const Login = () => {
                   type="email"
                   placeholder="votre@email.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  // L'état est correctement mis à jour ici
+                  onChange={(e) => {
+                    // Vérification de débogage : décommentez pour voir si l'événement est déclenché
+                    // console.log("Email change:", e.target.value); 
+                    setEmail(e.target.value)
+                  }}
                   required
                   className="border-primary/30 focus:border-primary"
+                  disabled={isLoading}
                 />
               </div>
               <div className="space-y-2">
@@ -100,9 +125,15 @@ const Login = () => {
                   type="password"
                   placeholder="••••••••"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  // L'état est correctement mis à jour ici
+                  onChange={(e) => {
+                    // Vérification de débogage : décommentez pour voir si l'événement est déclenché
+                    // console.log("Password change:", e.target.value); 
+                    setPassword(e.target.value)
+                  }}
                   required
                   className="border-primary/30 focus:border-primary"
+                  disabled={isLoading}
                 />
               </div>
               <Button

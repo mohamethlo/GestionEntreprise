@@ -17,16 +17,106 @@ import {
   MinusCircle,
 } from "lucide-react";
 import GoogleMapComponent from './GoogleMapComponent';
+import Swal from "sweetalert2"; // <-- Ajout de l'import SweetAlert2
 
 // ===========================================
-// TYPESCRIPT INTERFACES
+// CONFIGURATION ET UTILS
+// ===========================================
+
+// 🛑🛑🛑 IMPORTANT : METTRE À JOUR CETTE VALEUR 🛑🛑🛑
+const FLASK_API_ROOT = "http://localhost:5000"; 
+// Clé d'authentification harmonisée
+const AUTH_TOKEN_KEY = 'authToken'; 
+
+const API_BASE_URL = FLASK_API_ROOT + "/api/attendance"; 
+
+/**
+ * Fonction d'aide pour les requêtes API avec gestion d'erreurs, JWT, et erreurs non-JSON.
+ */
+const apiFetch = async (url: string, options: RequestInit = {}) => {
+  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token && { 'Authorization': `Bearer ${token}` }),
+    ...options.headers,
+  };
+
+  const response = await fetch(`${API_BASE_URL}${url}`, {
+    ...options,
+    headers,
+  });
+
+  let data;
+  try {
+    data = await response.json(); 
+  } catch (e) {
+    if (!response.ok) {
+        const text = await response.text();
+        if (text.includes("<!doctype html>")) {
+             throw new Error(`Erreur HTTP ${response.status}: Le serveur a renvoyé une page HTML (possiblement une erreur ou une redirection).`);
+        }
+        throw new Error(`Erreur HTTP ${response.status}: Le serveur n'a pas renvoyé de JSON.`);
+    }
+    return {};
+  }
+
+  if (!response.ok) {
+    const errorMessage = data.message || `Erreur API: ${response.status} ${response.statusText}`;
+    throw new Error(errorMessage);
+  }
+
+  return data;
+};
+
+
+// ===========================================
+// UTILS
+// ===========================================
+
+// Remplacement de l'ancienne fonction "showSwalAlert" par l'appel direct à Swal.fire
+const showSwalAlert = (config: {
+  title: string;
+  html?: string;
+  text?: string;
+  icon: 'success' | 'error' | 'warning' | 'info';
+  confirmButtonText?: string;
+  timer?: number;
+  toast?: boolean;
+}) => {
+  // Utilisez directement Swal.fire
+  Swal.fire({
+    ...config,
+    confirmButtonText: config.confirmButtonText || 'OK',
+    customClass: {
+        confirmButton: 'bg-primary hover:bg-primary/90 text-white font-bold py-2 px-4 rounded',
+    },
+    buttonsStyling: false, // Nécessaire pour utiliser les classes Tailwind sur le bouton
+  });
+};
+
+const calculateTotalHours = (checkInStr: string | null, checkOutStr: string | null): string => {
+  if (!checkInStr || !checkOutStr) return '-';
+  try {
+    const checkIn = new Date(checkInStr);
+    const checkOut = new Date(checkOutStr);
+    const diffMs = checkOut.getTime() - checkIn.getTime();
+    const diffHours = diffMs / (1000 * 60 * 60);
+    return diffHours.toFixed(1) + 'h';
+  } catch {
+    return '-';
+  }
+};
+
+
+// ===========================================
+// TYPESCRIPT INTERFACES (Aucun changement ici)
 // ===========================================
 
 interface AttendanceRecord {
   id: number;
-  date: string;
-  check_in: string | null;
-  check_out: string | null;
+  date: string; 
+  check_in: string | null; 
+  check_out: string | null; 
   check_in_location: string | null;
   check_out_location: string | null;
 }
@@ -47,59 +137,20 @@ interface UserStatus {
   justification?: string;
 }
 
-// ===========================================
-// DONNÉES SIMULÉES (MOCK)
-// ===========================================
+interface TeamStatusAPI {
+    id: number;
+    name: string; // Format: "Nom Prenom"
+}
 
-const MOCK_HISTORY: AttendanceRecord[] = [
-  { id: 1, date: '2025-09-27', check_in: '2025-09-27T08:30:00.000Z', check_out: '2025-09-27T17:30:00.000Z', check_in_location: 'Bureau Central', check_out_location: 'Bureau Central' },
-  { id: 2, date: '2025-09-26', check_in: '2025-09-26T09:00:00.000Z', check_out: '2025-09-26T18:00:00.000Z', check_in_location: 'Télétravail', check_out_location: 'Télétravail' },
-];
-
-const MOCK_TEAM_STATUS: UserStatus[] = [
-  { id: 101, prenom: 'Alice', nom: 'Dupont', status: 'present' },
-  { id: 102, prenom: 'Bob', nom: 'Martin', status: 'absent' },
-  { id: 103, prenom: 'Clara', nom: 'Lefevre', status: 'late', justification: 'Problème de transport.' },
-  { id: 104, prenom: 'David', nom: 'Roy', status: 'present' },
-];
-
-const MOCK_PRESENTS = MOCK_TEAM_STATUS.filter(u => u.status === 'present' || u.status === 'late');
-const MOCK_ABSENTS = MOCK_TEAM_STATUS.filter(u => u.status === 'absent');
-const MOCK_RETARDS = MOCK_TEAM_STATUS.filter(u => u.status === 'late');
-
-const calculateTotalHours = (checkInStr: string | null, checkOutStr: string | null): string => {
-  if (!checkInStr || !checkOutStr) return '-';
-  try {
-    const checkIn = new Date(checkInStr);
-    const checkOut = new Date(checkOutStr);
-    const diffMs = checkOut.getTime() - checkIn.getTime();
-    const diffHours = diffMs / (1000 * 60 * 60);
-    return diffHours.toFixed(1) + 'h';
-  } catch {
-    return '-';
-  }
-};
-
-const showSwalAlert = (config: {
-  title: string;
-  html?: string;
-  text?: string;
-  icon: string;
-  confirmButtonText?: string;
-  timer?: number;
-  toast?: boolean;
-}) => {
-  const message = config.html || config.text || config.title;
-  alert(`${config.icon.toUpperCase()}: ${message}`);
-};
 
 // ===========================================
 // COMPOSANT PRINCIPAL
 // ===========================================
 
 const TimeTrackingContent = () => {
-  const [history, setHistory] = useState<AttendanceRecord[]>(MOCK_HISTORY);
+  const [history, setHistory] = useState<AttendanceRecord[]>([]);
   const [isActionLoading, setIsActionLoading] = useState(false);
+  const [isDataLoading, setIsDataLoading] = useState(true); 
   const [time, setTime] = useState(new Date());
 
   const [currentStatus, setCurrentStatus] = useState<CurrentAttendanceState>({
@@ -120,6 +171,15 @@ const TimeTrackingContent = () => {
     name: "Acquisition de la position...",
   });
 
+  const [teamStatus, setTeamStatus] = useState<{
+    presents: TeamStatusAPI[],
+    absents: TeamStatusAPI[],
+    retards: TeamStatusAPI[],
+  }>({ presents: [], absents: [], retards: [] });
+
+
+  // --- Effets de chargement initial ---
+
   // Horloge en temps réel
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -134,25 +194,35 @@ const TimeTrackingContent = () => {
       watchId = navigator.geolocation.watchPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
-          setUserLocation({
+          setUserLocation((prev) => ({
+            ...prev,
             latitude,
             longitude,
             name: `Position (${latitude.toFixed(4)}°, ${longitude.toFixed(4)}°)`,
-          });
+          }));
         },
         (error) => {
           console.error("Erreur de géolocalisation continue:", error);
-          setUserLocation({
+          setUserLocation((prev) => ({
+            ...prev,
             latitude: 48.8584,
             longitude: 2.2945,
             name: "Erreur - Position de secours",
+          }));
+          showSwalAlert({ // <-- Utilisation de Swal.fire
+            title: "Erreur de localisation",
+            text: `${error.message}. Position par défaut appliquée.`,
+            icon: "error",
           });
-          alert(`Erreur de localisation: ${error.message}.`);
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     } else {
-      alert("La géolocalisation n'est pas supportée par ce navigateur.");
+      showSwalAlert({ // <-- Utilisation de Swal.fire
+        title: "Géolocalisation non supportée",
+        text: "La géolocalisation n'est pas supportée par ce navigateur.",
+        icon: "warning",
+      });
     }
 
     return () => {
@@ -162,70 +232,195 @@ const TimeTrackingContent = () => {
     };
   }, []);
 
-  const handleCheckIn = () => {
+  // Chargement des données initiales (Historique et Statut du jour)
+  const fetchInitialData = useCallback(async () => {
+    setIsDataLoading(true);
+    try {
+      // 1. Récupérer l'historique
+      const historyData = await apiFetch("/");
+      const records: AttendanceRecord[] = historyData.data || [];
+      setHistory(records);
+
+      // 2. Déterminer le statut d'aujourd'hui
+      const todayDateStr = new Date().toISOString().split('T')[0];
+      const todayRecord = records.find(r => r.date === todayDateStr);
+
+      if (todayRecord) {
+        setCurrentStatus({
+          checkInTime: todayRecord.check_in ? new Date(todayRecord.check_in).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : null,
+          checkInLocation: todayRecord.check_in_location,
+          checkOutTime: todayRecord.check_out ? new Date(todayRecord.check_out).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : null,
+          isPunchedIn: !!todayRecord.check_in && !todayRecord.check_out,
+          isFinished: !!todayRecord.check_out,
+        });
+      } else {
+         setCurrentStatus({
+          checkInTime: null,
+          checkInLocation: null,
+          checkOutTime: null,
+          isPunchedIn: false,
+          isFinished: false,
+        });
+      }
+      
+      // 3. Récupérer les statistiques d'équipe
+      const statsData = await apiFetch("/stats/today");
+      setTeamStatus({
+        presents: statsData.presents || [],
+        absents: statsData.absents || [],
+        retards: statsData.retards || [],
+      });
+
+
+    } catch (error: any) {
+      console.error("Erreur lors du chargement des données initiales:", error.message);
+      showSwalAlert({ // <-- Utilisation de Swal.fire
+        title: "Erreur de chargement",
+        text: `Impossible de récupérer les données de pointage. Erreur: ${error.message}`,
+        icon: "error",
+      });
+    } finally {
+      setIsDataLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchInitialData();
+  }, [fetchInitialData]);
+
+
+  // --- Fonctions de pointage API ---
+
+  const handleCheckIn = async () => {
     if (!userLocation.latitude || !userLocation.longitude) {
-      alert("Votre position n'est pas encore disponible. Veuillez attendre un instant.");
+      showSwalAlert({ // <-- Utilisation de Swal.fire
+        title: "Localisation indisponible",
+        text: "Votre position n'est pas encore disponible. Veuillez attendre un instant.",
+        icon: "warning",
+      });
       return;
     }
-    setIsActionLoading(true);
-    const now = new Date();
-    const checkInTime = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    
+    if (currentStatus.isPunchedIn || currentStatus.isFinished) {
+        return;
+    }
 
-    setTimeout(() => {
-      setCurrentStatus({
-        ...currentStatus,
+    setIsActionLoading(true);
+
+    try {
+      const payload = {
+        latitude: userLocation.latitude,
+        longitude: userLocation.longitude,
+        location_name: userLocation.name,
+      };
+
+      const response = await apiFetch("/check_in", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+
+      const now = new Date();
+      const checkInTime = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+      setCurrentStatus(prev => ({
+        ...prev,
         checkInTime: checkInTime,
         checkInLocation: userLocation.name,
         isPunchedIn: true,
-      });
-      setIsActionLoading(false);
+        isFinished: false,
+      }));
+      
+      await fetchInitialData();
 
-      showSwalAlert({
+      showSwalAlert({ // <-- Utilisation de Swal.fire
         title: "Pointage d'entrée réussi ! ✅",
-        html: `Votre entrée a été enregistrée à ${checkInTime} à l'adresse ${userLocation.name}.`,
+        html: `${response.message} (à ${checkInTime}).`,
         icon: "success",
         confirmButtonText: "Compris",
       });
-    }, 1500);
+
+    } catch (error: any) {
+      let message = error.message || "Une erreur est survenue lors du pointage d'entrée.";
+      
+      showSwalAlert({ // <-- Utilisation de Swal.fire
+        title: "Échec du pointage d'entrée",
+        text: message,
+        icon: "error",
+      });
+    } finally {
+      setIsActionLoading(false);
+    }
   };
 
-  const handleCheckOut = () => {
-    setIsActionLoading(true);
-    const now = new Date();
+  const handleCheckOut = async () => {
+    if (!currentStatus.isPunchedIn) {
+      showSwalAlert({ // <-- Utilisation de Swal.fire
+        title: "Action impossible",
+        text: "Vous devez d'abord pointer votre entrée.",
+        icon: "warning",
+      });
+      return;
+    }
 
-    setTimeout(() => {
-      const simulatedCheckIn = new Date(new Date().setHours(8, 30, 0, 0)).toISOString();
+    if (!userLocation.latitude || !userLocation.longitude) {
+        showSwalAlert({ // <-- Utilisation de Swal.fire
+            title: "Localisation indisponible",
+            text: "Votre position n'est pas encore disponible. Veuillez attendre un instant.",
+            icon: "warning",
+        });
+        return;
+    }
+    
+    setIsActionLoading(true);
+
+    try {
+      const payload = {
+        latitude: userLocation.latitude,
+        longitude: userLocation.longitude,
+        location: currentStatus.checkInLocation || userLocation.name, 
+      };
+
+      const response = await apiFetch("/check_out", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+
+      const now = new Date();
       const checkOutTime = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
-      setCurrentStatus({
-        ...currentStatus,
+      setCurrentStatus(prev => ({
+        ...prev,
         checkOutTime: checkOutTime,
         isPunchedIn: false,
         isFinished: true,
-      });
+      }));
 
-      const newHistoryRecord: AttendanceRecord = {
-        id: Date.now(),
-        date: now.toISOString().split('T')[0],
-        check_in: simulatedCheckIn,
-        check_out: now.toISOString(),
-        check_in_location: currentStatus.checkInLocation,
-        check_out_location: userLocation.name,
-      };
-      setHistory([newHistoryRecord, ...history]);
-      setIsActionLoading(false);
+      await fetchInitialData();
 
-      showSwalAlert({
+      showSwalAlert({ // <-- Utilisation de Swal.fire
         title: "Sortie enregistrée 👋",
-        html: `Votre journée de travail est terminée. Sortie enregistrée à ${checkOutTime}.`,
+        html: `${response.message} (à ${checkOutTime}).`,
         icon: "info",
         confirmButtonText: "OK",
       });
-    }, 1500);
+
+    } catch (error: any) {
+      let message = error.message || "Une erreur est survenue lors du pointage de sortie.";
+      
+      showSwalAlert({ // <-- Utilisation de Swal.fire
+        title: "Échec du pointage de sortie",
+        text: message,
+        icon: "error",
+      });
+    } finally {
+      setIsActionLoading(false);
+    }
   };
 
+  // --- Mémos et états dérivés (inchangé) ---
+
   const ButtonState = useMemo(() => {
-    if (isActionLoading)
+    if (isActionLoading || isDataLoading)
       return {
         text: "Chargement...",
         icon: <Loader2 className="mr-2 h-4 w-4 animate-spin" />,
@@ -251,7 +446,7 @@ const TimeTrackingContent = () => {
         icon: <LogOut className="mr-2 h-4 w-4" />,
         action: handleCheckOut,
         variant: "destructive" as const,
-        disabled: false,
+        disabled: !userLocation.latitude, 
         className: "bg-red-500 hover:bg-red-600"
       };
 
@@ -260,10 +455,10 @@ const TimeTrackingContent = () => {
       icon: <LogIn className="mr-2 h-4 w-4" />,
       action: handleCheckIn,
       variant: "default" as const,
-      disabled: !userLocation.latitude,
+      disabled: !userLocation.latitude, 
       className: !userLocation.latitude ? "bg-gray-400" : "bg-green-600 hover:bg-green-700"
     };
-  }, [isActionLoading, currentStatus, userLocation.latitude]);
+  }, [isActionLoading, isDataLoading, currentStatus, userLocation.latitude]);
 
   const todayTotalHours = useMemo(() => {
     const todayDate = new Date().toISOString().split('T')[0];
@@ -274,6 +469,49 @@ const TimeTrackingContent = () => {
     return '-';
   }, [history]);
 
+  const allTeamUsers = useMemo(() => {
+    const parseName = (fullName: string): { nom: string, prenom: string } => {
+        const parts = fullName.split(' ');
+        const nom = parts[0] || '';
+        const prenom = parts.slice(1).join(' ') || '';
+        return { nom, prenom };
+    };
+
+    const presentUsers: UserStatus[] = teamStatus.presents.map(u => ({
+        id: u.id,
+        ...parseName(u.name),
+        status: teamStatus.retards.some(r => r.id === u.id) ? 'late' : 'present',
+    }));
+    
+    const absentUsers: UserStatus[] = teamStatus.absents.map(u => ({
+        id: u.id,
+        ...parseName(u.name),
+        status: 'absent',
+    }));
+    
+    const lateUsers: UserStatus[] = presentUsers.filter(u => u.status === 'late').map(u => ({
+        ...u,
+        justification: "Retard constaté via l'heure de pointage.", 
+    }));
+    
+    return {
+        MOCK_PRESENTS: presentUsers,
+        MOCK_ABSENTS: absentUsers,
+        MOCK_RETARDS: lateUsers,
+    };
+  }, [teamStatus]);
+  
+  // Affichage du chargement des données initiales
+  if (isDataLoading) {
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-surface">
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            <span className="ml-3 text-lg text-primary">Chargement des données...</span>
+        </div>
+    );
+  }
+
+  // --- Rendu du composant (inchangé) ---
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-surface">
       <div className="container mx-auto p-6 space-y-6">
@@ -366,12 +604,12 @@ const TimeTrackingContent = () => {
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-green-700 text-lg">
                 <UserCheck className="w-5 h-5" />
-                Présents ({MOCK_PRESENTS.length})
+                Présents ({allTeamUsers.MOCK_PRESENTS.length})
               </CardTitle>
             </CardHeader>
             <CardContent>
               <ul className="space-y-2 text-sm">
-                {MOCK_PRESENTS.map(user => (
+                {allTeamUsers.MOCK_PRESENTS.map(user => (
                   <li key={user.id} className="flex items-center justify-between">
                     <span>{user.prenom} {user.nom}</span>
                     {user.status === 'late' && (
@@ -389,12 +627,12 @@ const TimeTrackingContent = () => {
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-red-700 text-lg">
                 <MinusCircle className="w-5 h-5" />
-                Absents ({MOCK_ABSENTS.length})
+                Absents ({allTeamUsers.MOCK_ABSENTS.length})
               </CardTitle>
             </CardHeader>
             <CardContent>
               <ul className="space-y-2 text-sm">
-                {MOCK_ABSENTS.map(user => (
+                {allTeamUsers.MOCK_ABSENTS.map(user => (
                   <li key={user.id}>
                     {user.prenom} {user.nom}
                   </li>
@@ -407,12 +645,12 @@ const TimeTrackingContent = () => {
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-yellow-700 text-lg">
                 <AlertCircle className="w-5 h-5" />
-                En Retard ({MOCK_RETARDS.length})
+                En Retard ({allTeamUsers.MOCK_RETARDS.length})
               </CardTitle>
             </CardHeader>
             <CardContent>
               <ul className="space-y-2 text-sm">
-                {MOCK_RETARDS.map(user => (
+                {allTeamUsers.MOCK_RETARDS.map(user => (
                   <li key={user.id}>
                     <div>{user.prenom} {user.nom}</div>
                     {user.justification && (
