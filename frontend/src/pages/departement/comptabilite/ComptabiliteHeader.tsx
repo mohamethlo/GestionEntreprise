@@ -4,7 +4,7 @@ import { ArrowLeft, User, LogOut, ChevronDown } from "lucide-react";
 import netsystemeLogo from "@/assets/netsysteme-logo.png";
 import { useNavigate } from 'react-router-dom';
 
-const AdminHeader = ({ navigate }) => {
+const ComptabiliteHeader = ({ navigate }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
   const navigateHook = useNavigate();
@@ -58,7 +58,7 @@ const AdminHeader = ({ navigate }) => {
         
         {/* Centre : Nom de l'Entreprise */}
         <div className="flex flex-col items-center">
-          <h1 className="text-xl font-extrabold text-primary">Département Administration</h1>
+          <h1 className="text-xl font-extrabold text-primary">Département Comptabilité</h1>
         </div>
         
         {/* Droite : Profil utilisateur avec dropdown */}
@@ -81,8 +81,8 @@ const AdminHeader = ({ navigate }) => {
             <div className="absolute right-0 top-12 mt-1 w-48 bg-white rounded-lg shadow-xl border border-gray-200 py-1 z-20 animate-in fade-in-80">
               {/* En-tête du profil */}
               <div className="px-4 py-3 border-b border-gray-100">
-                <p className="text-sm font-semibold text-gray-900">Administrateur</p>
-                <p className="text-xs text-gray-500 mt-1">admin@netsysteme.com</p>
+                <p className="text-sm font-semibold text-gray-900">Administrateur Comptabilité</p>
+                <p className="text-xs text-gray-500 mt-1">comptabilite@netsysteme.com</p>
               </div>
               
               {/* Option Déconnexion */}
@@ -101,4 +101,4 @@ const AdminHeader = ({ navigate }) => {
   );
 };
 
-export default AdminHeader;
+export default ComptabiliteHeader;
