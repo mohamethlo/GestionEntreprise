@@ -7,11 +7,11 @@ import RhNavbar, { NAV_ITEMS } from "./AdminNavbar";
 import UserContent from "./pages/UserContent";
 import DashboardContent from "./DashboardContent";
 import SecurityContent from "./pages/SecurityContent";
-import SettingContent from "./pages/SettingContent";
 import PasswordContent from "./pages/PasswordContent";
+import SettingContent from "./pages/SettingContent";
 
 
-const RhDepartment = () => {
+const AdministrationDepartment = () => {
   const navigate = useNavigate();
   // 'dashboard' est l'onglet actif par défaut
   const [activeTab, setActiveTab] = useState(NAV_ITEMS[0].key); 
@@ -52,4 +52,4 @@ const RhDepartment = () => {
   );
 };
 
-export default RhDepartment;
+export default AdministrationDepartment;
