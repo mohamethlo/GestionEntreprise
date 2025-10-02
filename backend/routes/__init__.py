@@ -9,6 +9,7 @@ from .intervention import intervention_bp
 from .attendance import attendance_bp
 from .work_locations import work_locations_bp  
 from .salary_advances import salary_advances_bp
+from .products import products_bp
 
 
 def register_blueprints(app: Flask):
@@ -23,3 +24,4 @@ def register_blueprints(app: Flask):
     app.register_blueprint(attendance_bp, url_prefix="/api/attendance")
     app.register_blueprint(work_locations_bp, url_prefix="/api/work_locations")
     app.register_blueprint(salary_advances_bp, url_prefix="/api/salary_advances")
+    app.register_blueprint(products_bp, url_prefix="/api/products")
