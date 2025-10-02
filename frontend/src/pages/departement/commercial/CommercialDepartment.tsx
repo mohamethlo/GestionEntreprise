@@ -5,6 +5,11 @@ import { useNavigate } from "react-router-dom";
 import RhHeader from "./CommercialHeader";
 import RhNavbar, { NAV_ITEMS } from "./CommercialNavbar";
 import DashboardContent from "./DashboardContent";
+import ClientContent from "./pages/ClientContent";
+import DevisContent from "./pages/DevisContent";
+import StockContent from "./pages/StockContent";
+import ProductContent from "./pages/ProductContent";
+import ProformasContent from "./pages/ProformasContent";
 
 
 const CommercialDepartment = () => {
@@ -17,6 +22,16 @@ const CommercialDepartment = () => {
     switch (activeTab) {
       case "dashboard":
         return <DashboardContent />;
+      case "clients":
+        return <ClientContent />;
+      case "devis":
+        return <DevisContent />;
+      case "stock":
+        return <StockContent />;
+      case "produit":
+        return <ProductContent />;
+      case "proformas":
+        return <ProformasContent />;
       default:
         return <DashboardContent />;
     }

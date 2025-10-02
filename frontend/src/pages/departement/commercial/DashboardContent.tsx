@@ -46,7 +46,7 @@ const DashboardContent = () => {
                         <div className="p-4 bg-success/10 border border-success/20 rounded-lg">
                             <div className="flex items-center gap-2 text-success">
                                 <CheckCircle2 className="h-4 w-4" />
-                                <span className="text-sm">Service RH actif et synchronisé</span>
+                                <span className="text-sm">Service Commercial actif et synchronisé</span>
                             </div>
                         </div>
                     </div>
