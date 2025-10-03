@@ -1,6 +1,6 @@
 # routes/inventory.py
 import os
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app, send_from_directory
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from werkzeug.utils import secure_filename
 from functools import wraps
@@ -29,6 +29,19 @@ def inventory_permission_required(f):
             return jsonify({'success': False, 'message': 'Permission refusée'}), 403
         return f(*args, **kwargs)
     return decorated_function
+
+# -------------------------
+# Route pour servir les images
+# -------------------------
+@inventory_bp.route('/uploads/<path:filename>')
+def serve_inventory_image(filename):
+    """Sert les images uploadées pour l'inventaire"""
+    try:
+        uploads_dir = os.path.join(current_app.root_path, 'uploads')
+        return send_from_directory(uploads_dir, filename)
+    except FileNotFoundError:
+        current_app.logger.error(f"Image non trouvée: {filename}")
+        return jsonify({'success': False, 'message': 'Image non trouvée'}), 404
 
 # -------------------------
 # GET : Liste des articles d'inventaire
