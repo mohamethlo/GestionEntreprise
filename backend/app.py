@@ -42,22 +42,37 @@ def create_app():
     app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB
     app.config['UPLOAD_FOLDER'] = 'uploads'
 
-    # --- Init extensions ---
     db.init_app(app)
     mail.init_app(app)
 
     # --- Enregistrement Blueprints ---
     from auth import auth_bp
-    from routes import register_blueprints
+    from users import users_bp
+    from roles import roles_bp
+    from devis import devis_bp
+    from intervention import intervention_bp
+    from inventory import inventory_bp
+    from client import client_bp
+    
+    # Route pour servir les fichiers statiques
+    @app.route('/uploads/<path:filename>')
+    def uploaded_file(filename):
+        from flask import send_from_directory
+        return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
+    # --- Enregistrement Blueprints ---
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
-    register_blueprints(app)  # tous les autres blueprints (users, roles, billing, etc.)
+    app.register_blueprint(users_bp, url_prefix='/api/users')
+    app.register_blueprint(roles_bp, url_prefix='/api/roles')
+    app.register_blueprint(devis_bp, url_prefix='/api/devis')
+    app.register_blueprint(intervention_bp, url_prefix='/api/interventions')
+    app.register_blueprint(inventory_bp, url_prefix='/api/inventory')
+    app.register_blueprint(client_bp, url_prefix='/api/clients')
 
     # --- Initialisation DB ---
     with app.app_context():
         import models  # pour que SQLAlchemy connaisse les tables
         db.create_all()
-        seed_data()
 
     return app
 

@@ -551,11 +551,17 @@ const StockContent = () => {
                       <TableCell>
                         {article.image_path ? (
                           <img
-                            src={`${API_BASE_URL}/${article.image_path}`}
+                            src={article.image_path.startsWith('http') ? article.image_path : `${API_BASE_URL}/${article.image_path}`}
                             alt={article.name}
                             className="h-10 w-10 object-cover rounded-md"
                             onError={(e) => {
-                              (e.target as HTMLImageElement).style.display = 'none';
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                              // Afficher une icône par défaut en cas d'erreur
+                              const fallback = document.createElement('div');
+                              fallback.className = 'h-10 w-10 bg-gray-200 rounded-md flex items-center justify-center';
+                              fallback.innerHTML = '<Package class="h-5 w-5 text-gray-400" />';
+                              target.parentNode?.insertBefore(fallback, target);
                             }}
                           />
                         ) : (
