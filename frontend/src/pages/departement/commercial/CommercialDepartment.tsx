@@ -10,6 +10,7 @@ import DevisContent from "./pages/DevisContent";
 import StockContent from "./pages/StockContent";
 import ProductContent from "./pages/ProductContent";
 import ProformasContent from "./pages/ProformasContent";
+import BlacklistContent from "./pages/BlacklistContent";
 
 
 const CommercialDepartment = () => {
@@ -32,6 +33,8 @@ const CommercialDepartment = () => {
         return <ProductContent />;
       case "proformas":
         return <ProformasContent />;
+      case "blacklist":
+        return <BlacklistContent />;
       default:
         return <DashboardContent />;
     }
