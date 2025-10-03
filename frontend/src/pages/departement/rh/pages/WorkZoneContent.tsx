@@ -49,163 +49,431 @@ const apiFetch = async (url, options = {}) => {
   return data;
 };
 
-// Composant pour la carte Google Maps
-const MapComponent = ({ zones, onLocationSelect, center = { lat: 14.716677, lng: -17.467686 } }) => {
+// Composant pour la carte Google Maps - VERSION SIMPLIFIÉE ET CORRIGÉE
+const MapComponent = ({ zones, onLocationSelect, center = { lat: 14.716677, lng: -17.467686 }, mapId = "map" }) => {
   const [map, setMap] = useState(null);
-  const [markers, setMarkers] = useState([]);
+  const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [circles, setCircles] = useState([]);
 
   useEffect(() => {
-    if (!window.google) {
+    let googleMap = null;
+    let clickListener = null;
+
+    const initializeMap = () => {
+      const mapElement = document.getElementById(mapId);
+      if (!mapElement) {
+        console.error("Élément map non trouvé:", mapId);
+        return;
+      }
+
+      // Vérifier si Google Maps est chargé
+      if (!window.google || !window.google.maps) {
+        console.error("Google Maps API non chargée");
+        // Recharger le script
+        loadGoogleMaps();
+        return;
+      }
+
+      try {
+        googleMap = new window.google.maps.Map(mapElement, {
+          center: center,
+          zoom: 18,
+          styles: [
+            { "featureType": "administrative", "elementType": "labels.text.fill", "stylers": [{ "color": "#444444" }] },
+            { "featureType": "landscape", "elementType": "all", "stylers": [{ "color": "#f2f2f2" }] },
+            { "featureType": "poi", "elementType": "all", "stylers": [{ "visibility": "off" }] },
+            { "featureType": "road", "elementType": "all", "stylers": [{ "saturation": -100 }, { "lightness": 45 }] },
+            { "featureType": "road.highway", "elementType": "all", "stylers": [{ "visibility": "simplified" }] },
+            { "featureType": "road.arterial", "elementType": "labels.icon", "stylers": [{ "visibility": "off" }] },
+            { "featureType": "transit", "elementType": "all", "stylers": [{ "visibility": "off" }] },
+            { "featureType": "water", "elementType": "all", "stylers": [{ "color": "#d4e6ff" }, { "visibility": "on" }] }
+          ]
+        });
+
+        if (onLocationSelect) {
+          clickListener = googleMap.addListener('click', (event) => {
+            onLocationSelect({
+              lat: event.latLng.lat(),
+              lng: event.latLng.lng()
+            });
+          });
+        }
+
+        setMap(googleMap);
+        setIsMapLoaded(true);
+
+        // Ajouter la géolocalisation
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              const userLocation = {
+                lat: position.coords.latitude,
+                lng: position.coords.longitude,
+              };
+              
+              new window.google.maps.Marker({
+                position: userLocation,
+                map: googleMap,
+                title: "Votre Position",
+                icon: {
+                  url: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIj4KICA8Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSIxMCIgZmlsbD0iIzQyODVGNCIgZmlsbC1vcGFjaXR5PSIwLjMiLz4KICA8Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSI1IiBmaWxsPSIjNDI4NUY0IiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiLz4KPC9zdmc+Cg==',
+                  scaledSize: new window.google.maps.Size(48, 48),
+                  anchor: new window.google.maps.Point(24, 24),
+                },
+              });
+            },
+            () => {
+              console.warn("L'utilisateur a refusé la géolocalisation.");
+            }
+          );
+        }
+
+      } catch (error) {
+        console.error("Erreur lors de l'initialisation de la carte:", error);
+      }
+    };
+
+    const loadGoogleMaps = () => {
+      if (document.querySelector(`script[src*="maps.googleapis.com"]`)) {
+        // Le script est déjà en cours de chargement
+        return;
+      }
+
       const script = document.createElement('script');
       script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places`;
       script.async = true;
       script.defer = true;
+      script.onload = () => {
+        setTimeout(initializeMap, 500);
+      };
+      script.onerror = () => {
+        console.error("Erreur de chargement de l'API Google Maps");
+      };
       document.head.appendChild(script);
-      
-      script.onload = initializeMap;
+    };
+
+    // Démarrage de l'initialisation
+    if (window.google && window.google.maps) {
+      setTimeout(initializeMap, 100);
     } else {
-      initializeMap();
+      loadGoogleMaps();
     }
 
+    // Nettoyage
     return () => {
-      markers.forEach(marker => marker.setMap(null));
+      if (clickListener) {
+        window.google.maps.event.removeListener(clickListener);
+      }
+      // Nettoyer les cercles
       circles.forEach(circle => circle.setMap(null));
     };
-  }, []);
+  }, [mapId]); // Seulement mapId en dépendance
 
+  // Mettre à jour le centre
   useEffect(() => {
-    if (map && zones) {
-      updateZonesOnMap();
+    if (map && isMapLoaded && center) {
+      map.setCenter(center);
     }
-  }, [zones, map]);
+  }, [center, map, isMapLoaded]);
 
-  const initializeMap = () => {
-    const mapElement = document.getElementById('map');
-    if (!mapElement) return;
+  // Mettre à jour les zones
+  useEffect(() => {
+    if (map && isMapLoaded && zones) {
+      // Nettoyer les anciens cercles
+      circles.forEach(circle => circle.setMap(null));
+      const newCircles = [];
 
-    const googleMap = new window.google.maps.Map(mapElement, {
-      center: center,
-      zoom: 12,
-      styles: [
-        {
-          "featureType": "administrative",
-          "elementType": "labels.text.fill",
-          "stylers": [{ "color": "#444444" }]
-        },
-        {
-          "featureType": "landscape",
-          "elementType": "all",
-          "stylers": [{ "color": "#f2f2f2" }]
-        },
-        {
-          "featureType": "poi",
-          "elementType": "all",
-          "stylers": [{ "visibility": "off" }]
-        },
-        {
-          "featureType": "road",
-          "elementType": "all",
-          "stylers": [{ "saturation": -100 }, { "lightness": 45 }]
-        },
-        {
-          "featureType": "road.highway",
-          "elementType": "all",
-          "stylers": [{ "visibility": "simplified" }]
-        },
-        {
-          "featureType": "road.arterial",
-          "elementType": "labels.icon",
-          "stylers": [{ "visibility": "off" }]
-        },
-        {
-          "featureType": "transit",
-          "elementType": "all",
-          "stylers": [{ "visibility": "off" }]
-        },
-        {
-          "featureType": "water",
-          "elementType": "all",
-          "stylers": [{ "color": "#d4e6ff" }, { "visibility": "on" }]
+      // Ajouter les nouvelles zones
+      zones.forEach(zone => {
+        if (zone.latitude && zone.longitude) {
+          const position = {
+            lat: parseFloat(zone.latitude),
+            lng: parseFloat(zone.longitude)
+          };
+
+          // Définir les couleurs selon le type de zone
+          const isBureau = zone.type === 'bureau';
+          const strokeColor = isBureau ? '#2563EB' : '#D97706'; // Bleu pour bureau, Jaune/Ambre pour chantier
+          const fillColor = isBureau ? '#3B82F6' : '#F59E0B'; // Bleu pour bureau, Jaune/Ambre pour chantier
+
+          const circle = new window.google.maps.Circle({
+            strokeColor: strokeColor,
+            strokeOpacity: 0.8,
+            strokeWeight: 2,
+            fillColor: fillColor,
+            fillOpacity: 0.25,
+            map: map,
+            center: position,
+            radius: zone.radius || 50
+          });
+
+          // Ajouter une infobulle avec les détails de la zone
+          const infoWindow = new window.google.maps.InfoWindow({
+            content: `
+              <div class="p-2 min-w-[200px]">
+                <h3 class="font-semibold text-gray-900">${zone.name}</h3>
+                <p class="text-sm text-gray-600 mt-1">
+                  <span class="inline-flex items-center gap-1">
+                    <span class="w-3 h-3 rounded-full ${isBureau ? 'bg-blue-500' : 'bg-amber-500'}"></span>
+                    Type: ${zone.type}
+                  </span>
+                </p>
+                <p class="text-sm text-gray-600">Rayon: ${zone.radius}m</p>
+                ${zone.address ? `<p class="text-sm text-gray-500 mt-1">${zone.address}</p>` : ''}
+              </div>
+            `,
+          });
+
+          // Ajouter un événement au clic sur le cercle pour afficher l'infobulle
+          circle.addListener('click', () => {
+            // Fermer toutes les autres infobulles
+            circles.forEach(c => {
+              const existingInfoWindow = c.get('infoWindow');
+              if (existingInfoWindow) {
+                existingInfoWindow.close();
+              }
+            });
+            
+            infoWindow.open(map);
+            infoWindow.setPosition(position);
+          });
+
+          // Stocker l'infobulle avec le cercle
+          circle.set('infoWindow', infoWindow);
+          circle.set('zoneData', zone);
+
+          newCircles.push(circle);
         }
-      ]
-    });
-
-    if (onLocationSelect) {
-      googleMap.addListener('click', (event) => {
-        onLocationSelect({
-          lat: event.latLng.lat(),
-          lng: event.latLng.lng()
-        });
       });
+
+      setCircles(newCircles);
     }
-
-    setMap(googleMap);
-  };
-
-  const updateZonesOnMap = () => {
-    markers.forEach(marker => marker.setMap(null));
-    circles.forEach(circle => circle.setMap(null));
-
-    const newMarkers = [];
-    const newCircles = [];
-
-    zones.forEach(zone => {
-      if (zone.latitude && zone.longitude) {
-        const position = {
-          lat: parseFloat(zone.latitude),
-          lng: parseFloat(zone.longitude)
-        };
-
-        const marker = new window.google.maps.Marker({
-          position: position,
-          map: map,
-          title: zone.name,
-          icon: {
-            url: zone.type === 'bureau' 
-              ? 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTMgMjFIMjFNNCAxN0gyME0xMiAzdjE4TTcgN2gxME03IDExaDEwTTcgMTVoMTAiIHN0cm9rZT0iIzRGNjRFNSIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KPC9zdmc+Cg=='
-              : 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTE5IDdINkM0Ljc5IDcgNCA3Ljc5IDQgOXYxMWMwIDEuMjEuNzkgMiAyIDJoMTNjMS4yMSAwIDItLjc5IDItMlY5YzAtMS4yMS0uNzktMi0yLTJaIiBzdHJva2U9IiNGNTlFMEIiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+CjxwYXRoIGQ9Ik0xMCAxN1Y3IiBzdHJva2U9IiNGNTlFMEIiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPgo=',
-            scaledSize: new window.google.maps.Size(32, 32),
-          }
-        });
-
-        const circle = new window.google.maps.Circle({
-          strokeColor: zone.type === 'bureau' ? '#4F46E5' : '#F59E0B',
-          strokeOpacity: 0.8,
-          strokeWeight: 2,
-          fillColor: zone.type === 'bureau' ? '#4F46E5' : '#F59E0B',
-          fillOpacity: 0.2,
-          map: map,
-          center: position,
-          radius: parseFloat(zone.radius)
-        });
-
-        const infoWindow = new window.google.maps.InfoWindow({
-          content: `
-            <div class="p-2">
-              <h3 class="font-semibold">${zone.name}</h3>
-              <p class="text-sm">Type: ${zone.type}</p>
-              <p class="text-sm">Rayon: ${zone.radius}m</p>
-              ${zone.address ? `<p class="text-sm">Adresse: ${zone.address}</p>` : ''}
-            </div>
-          `
-        });
-
-        marker.addListener('click', () => {
-          infoWindow.open(map, marker);
-        });
-
-        newMarkers.push(marker);
-        newCircles.push(circle);
-      }
-    });
-
-    setMarkers(newMarkers);
-    setCircles(newCircles);
-  };
+  }, [zones, map, isMapLoaded]);
 
   return (
-    <div id="map" className="w-full h-full rounded-lg shadow-md" />
+    <div className="relative w-full h-full">
+      {!isMapLoaded && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-lg z-10">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin text-indigo-600 mx-auto mb-2"/>
+            <p className="text-gray-600">Chargement de la carte...</p>
+          </div>
+        </div>
+      )}
+      <div 
+        id={mapId} 
+        className={`w-full h-full rounded-lg shadow-md ${!isMapLoaded ? 'invisible' : 'visible'}`}
+      />
+    </div>
+  );
+};
+
+// Composant Modal séparé pour mieux gérer la carte
+const CreateZoneModal = ({ isOpen, onClose, onSave, zones, isLoading }) => {
+  const [selectedLocation, setSelectedLocation] = useState(null);
+  const [newZone, setNewZone] = useState({
+    name: '',
+    radius: 50,
+    type: '',
+    address: '',
+    latitude: '',
+    longitude: '',
+  });
+
+  const handleLocationSelect = (location) => {
+    setSelectedLocation(location);
+    setNewZone(prev => ({
+      ...prev,
+      latitude: location.lat.toString(),
+      longitude: location.lng.toString()
+    }));
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSave(newZone);
+  };
+
+  const resetForm = () => {
+    setNewZone({
+      name: '',
+      radius: 50,
+      type: '',
+      address: '',
+      latitude: '',
+      longitude: '',
+    });
+    setSelectedLocation(null);
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
+      <div className="bg-white rounded-3xl w-full max-w-5xl p-8 relative shadow-2xl border-2 border-indigo-100 transform animate-in zoom-in-95 duration-300">
+        <button
+          className="absolute top-6 right-6 text-gray-400 hover:text-gray-600 transition-all duration-300 transform hover:rotate-90 hover:scale-110 p-2 hover:bg-gray-100 rounded-full"
+          onClick={() => {
+            resetForm();
+            onClose();
+          }}
+        >
+          <X className="h-6 w-6"/>
+        </button>
+        
+        <div className="flex items-center gap-3 mb-8">
+          <div className="p-3 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl shadow-xl animate-pulse-glow">
+            <Plus className="h-6 w-6 text-white"/>
+          </div>
+          <h3 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+            Nouvelle Zone de Travail
+          </h3>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Formulaire */}
+          <div className="space-y-5">
+            <form className="space-y-5" onSubmit={handleSubmit}>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="transform hover:scale-102 transition-transform duration-200">
+                  <label className="block text-sm font-semibold mb-2 text-gray-900 flex items-center gap-2">
+                    <span className="w-2 h-2 bg-indigo-500 rounded-full"></span>
+                    Nom de la zone*
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ex: Siège social"
+                    value={newZone.name}
+                    onChange={(e) => setNewZone({...newZone, name: e.target.value})}
+                    required
+                    className="w-full border-2 border-gray-200 rounded-xl p-3.5 placeholder-gray-400 text-gray-900 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-300 hover:border-gray-300"
+                  />
+                </div>
+                <div className="transform hover:scale-102 transition-transform duration-200">
+                  <label className="block text-sm font-semibold mb-2 text-gray-900 flex items-center gap-2">
+                    <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
+                    Rayon (mètres)*
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="50"
+                    value={newZone.radius}
+                    onChange={(e) => setNewZone({...newZone, radius: e.target.value})}
+                    required
+                    min="1"
+                    className="w-full border-2 border-gray-200 rounded-xl p-3.5 placeholder-gray-400 text-gray-900 focus:border-purple-500 focus:ring-4 focus:ring-purple-100 transition-all duration-300 hover:border-gray-300"
+                  />
+                </div>
+              </div>
+
+              <div className="transform hover:scale-102 transition-transform duration-200">
+                <label className="block text-sm font-semibold mb-2 text-gray-900 flex items-center gap-2">
+                  <span className="w-2 h-2 bg-pink-500 rounded-full"></span>
+                  Type de zone*
+                </label>
+                <select 
+                  value={newZone.type}
+                  onChange={(e) => setNewZone({...newZone, type: e.target.value})}
+                  required
+                  className="w-full border-2 border-gray-200 rounded-xl p-3.5 text-gray-900 focus:border-pink-500 focus:ring-4 focus:ring-pink-100 transition-all duration-300 hover:border-gray-300 cursor-pointer"
+                >
+                  <option value="" disabled>Sélectionnez le type</option>
+                  <option value="bureau">🏢 Bureau</option>
+                  <option value="chantier">🏗️ Chantier</option>
+                </select>
+              </div>
+
+              <div className="transform hover:scale-102 transition-transform duration-200">
+                <label className="block text-sm font-semibold mb-2 text-gray-900 flex items-center gap-2">
+                  <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                  Adresse
+                </label>
+                <input
+                  type="text"
+                  placeholder="Adresse complète (facultatif)"
+                  value={newZone.address}
+                  onChange={(e) => setNewZone({...newZone, address: e.target.value})}
+                  className="w-full border-2 border-gray-200 rounded-xl p-3.5 placeholder-gray-400 text-gray-900 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-300 hover:border-gray-300"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="transform hover:scale-102 transition-transform duration-200">
+                  <label className="block text-sm font-semibold mb-2 text-gray-900 flex items-center gap-2">
+                    <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                    Latitude*
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="14.716677"
+                    value={newZone.latitude}
+                    onChange={(e) => setNewZone({...newZone, latitude: e.target.value})}
+                    required
+                    className="w-full border-2 border-gray-200 rounded-xl p-3.5 placeholder-gray-400 text-gray-900 focus:border-green-500 focus:ring-4 focus:ring-green-100 transition-all duration-300 hover:border-gray-300"
+                  />
+                </div>
+                <div className="transform hover:scale-102 transition-transform duration-200">
+                  <label className="block text-sm font-semibold mb-2 text-gray-900 flex items-center gap-2">
+                    <span className="w-2 h-2 bg-teal-500 rounded-full"></span>
+                    Longitude*
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="-17.467686"
+                    value={newZone.longitude}
+                    onChange={(e) => setNewZone({...newZone, longitude: e.target.value})}
+                    required
+                    className="w-full border-2 border-gray-200 rounded-xl p-3.5 placeholder-gray-400 text-gray-900 focus:border-teal-500 focus:ring-4 focus:ring-teal-100 transition-all duration-300 hover:border-gray-300"
+                  />
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-2xl p-5 transform hover:scale-102 transition-all duration-300 shadow-sm hover:shadow-md">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-blue-500 rounded-lg shadow-lg">
+                    <Navigation className="h-5 w-5 text-white"/>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-blue-900 mb-1">Sélection sur la carte</p>
+                    <p className="text-sm text-blue-700">
+                      Cliquez sur la carte à droite pour définir les coordonnées automatiquement
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <Button 
+                type="submit" 
+                className="w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 text-white py-4 rounded-xl font-bold text-lg transition-all duration-300 shadow-2xl hover:shadow-indigo-500/50 transform hover:scale-105 hover:-translate-y-1"
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin mr-2"/>
+                    Création en cours...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-5 w-5 mr-2"/>
+                    Créer la zone de travail
+                  </>
+                )}
+              </Button>
+            </form>
+          </div>
+
+          {/* Carte dans le modal */}
+          <div className="h-[600px] rounded-2xl overflow-hidden border-4 border-indigo-100 shadow-2xl transform hover:scale-102 transition-all duration-500">
+            <MapComponent 
+              mapId="modal-map"
+              zones={zones}
+              onLocationSelect={handleLocationSelect}
+              center={selectedLocation || { lat: 14.716677, lng: -17.467686 }}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 
@@ -218,16 +486,6 @@ const WorkZoneContent = () => {
   const [zones, setZones] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [selectedLocation, setSelectedLocation] = useState(null);
-  
-  const [newZone, setNewZone] = useState({
-    name: '',
-    radius: 50,
-    type: '',
-    address: '',
-    latitude: '',
-    longitude: '',
-  });
 
   const fetchZones = useCallback(async () => {
     setIsLoading(true);
@@ -251,20 +509,10 @@ const WorkZoneContent = () => {
     fetchZones();
   }, [fetchZones]);
 
-  const handleLocationSelect = (location) => {
-    setSelectedLocation(location);
-    setNewZone(prev => ({
-      ...prev,
-      latitude: location.lat.toString(),
-      longitude: location.lng.toString()
-    }));
-  };
-
-  const handleSaveZone = async (e) => {
-    e.preventDefault(); 
+  const handleSaveZone = async (zoneData) => {
     setIsSaving(true);
 
-    if (!newZone.name || !newZone.latitude || !newZone.longitude || !newZone.radius || !newZone.type) {
+    if (!zoneData.name || !zoneData.latitude || !zoneData.longitude || !zoneData.radius || !zoneData.type) {
       Swal.fire({
         icon: 'warning',
         title: 'Champs manquants',
@@ -279,10 +527,10 @@ const WorkZoneContent = () => {
       await apiFetch("/", {
         method: "POST",
         body: JSON.stringify({
-          ...newZone,
-          latitude: String(newZone.latitude),
-          longitude: String(newZone.longitude),
-          radius: Number(newZone.radius),
+          ...zoneData,
+          latitude: String(zoneData.latitude),
+          longitude: String(zoneData.longitude),
+          radius: Number(zoneData.radius),
         }),
       });
 
@@ -293,10 +541,7 @@ const WorkZoneContent = () => {
         confirmButtonColor: '#10B981',
       });
       
-      setNewZone({ name: '', radius: 50, type: '', address: '', latitude: '', longitude: '' });
-      setSelectedLocation(null);
       setIsModalOpen(false);
-      
       await fetchZones(); 
 
     } catch (error) {
@@ -384,15 +629,6 @@ const WorkZoneContent = () => {
         .animate-float {
           animation: float 3s ease-in-out infinite;
         }
-        @keyframes shimmer {
-          0% { background-position: -1000px 0; }
-          100% { background-position: 1000px 0; }
-        }
-        .animate-shimmer {
-          background: linear-gradient(to right, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%);
-          background-size: 1000px 100%;
-          animation: shimmer 2s infinite;
-        }
         @keyframes pulse-glow {
           0%, 100% { box-shadow: 0 0 20px rgba(99, 102, 241, 0.3); }
           50% { box-shadow: 0 0 40px rgba(99, 102, 241, 0.6); }
@@ -420,11 +656,7 @@ const WorkZoneContent = () => {
         </div>
         <Button
           className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-2xl hover:shadow-indigo-500/50 transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 rounded-xl px-6 py-6 font-semibold"
-          onClick={() => {
-            setNewZone({ name: '', radius: 50, type: '', address: '', latitude: '', longitude: '' });
-            setSelectedLocation(null);
-            setIsModalOpen(true);
-          }}
+          onClick={() => setIsModalOpen(true)}
         >
           <Plus className="h-5 w-5"/>
           Nouvelle Zone
@@ -502,8 +734,8 @@ const WorkZoneContent = () => {
                 </div>
               ) : (
                 <MapComponent 
+                  mapId="main-map"
                   zones={zones} 
-                  onLocationSelect={handleLocationSelect}
                 />
               )}
             </div>
@@ -648,169 +880,13 @@ const WorkZoneContent = () => {
       </div>
 
       {/* Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
-          <div className="bg-white rounded-3xl w-full max-w-5xl p-8 relative shadow-2xl border-2 border-indigo-100 transform animate-in zoom-in-95 duration-300">
-            <button
-              className="absolute top-6 right-6 text-gray-400 hover:text-gray-600 transition-all duration-300 transform hover:rotate-90 hover:scale-110 p-2 hover:bg-gray-100 rounded-full"
-              onClick={() => setIsModalOpen(false)}
-            >
-              <X className="h-6 w-6"/>
-            </button>
-            
-            <div className="flex items-center gap-3 mb-8">
-              <div className="p-3 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl shadow-xl animate-pulse-glow">
-                <Plus className="h-6 w-6 text-white"/>
-              </div>
-              <h3 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-                Nouvelle Zone de Travail
-              </h3>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* Formulaire */}
-              <div className="space-y-5">
-                <form className="space-y-5" onSubmit={handleSaveZone}>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="transform hover:scale-102 transition-transform duration-200">
-                      <label className="block text-sm font-semibold mb-2 text-gray-900 flex items-center gap-2">
-                        <span className="w-2 h-2 bg-indigo-500 rounded-full"></span>
-                        Nom de la zone*
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Ex: Siège social"
-                        value={newZone.name}
-                        onChange={(e) => setNewZone({...newZone, name: e.target.value})}
-                        required
-                        className="w-full border-2 border-gray-200 rounded-xl p-3.5 placeholder-gray-400 text-gray-900 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 transition-all duration-300 hover:border-gray-300"
-                      />
-                    </div>
-                    <div className="transform hover:scale-102 transition-transform duration-200">
-                      <label className="block text-sm font-semibold mb-2 text-gray-900 flex items-center gap-2">
-                        <span className="w-2 h-2 bg-purple-500 rounded-full"></span>
-                        Rayon (mètres)*
-                      </label>
-                      <input
-                        type="number"
-                        placeholder="50"
-                        value={newZone.radius}
-                        onChange={(e) => setNewZone({...newZone, radius: e.target.value})}
-                        required
-                        min="1"
-                        className="w-full border-2 border-gray-200 rounded-xl p-3.5 placeholder-gray-400 text-gray-900 focus:border-purple-500 focus:ring-4 focus:ring-purple-100 transition-all duration-300 hover:border-gray-300"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="transform hover:scale-102 transition-transform duration-200">
-                    <label className="block text-sm font-semibold mb-2 text-gray-900 flex items-center gap-2">
-                      <span className="w-2 h-2 bg-pink-500 rounded-full"></span>
-                      Type de zone*
-                    </label>
-                    <select 
-                      value={newZone.type}
-                      onChange={(e) => setNewZone({...newZone, type: e.target.value})}
-                      required
-                      className="w-full border-2 border-gray-200 rounded-xl p-3.5 text-gray-900 focus:border-pink-500 focus:ring-4 focus:ring-pink-100 transition-all duration-300 hover:border-gray-300 cursor-pointer"
-                    >
-                      <option value="" disabled>Sélectionnez le type</option>
-                      <option value="bureau">🏢 Bureau</option>
-                      <option value="chantier">🏗️ Chantier</option>
-                    </select>
-                  </div>
-
-                  <div className="transform hover:scale-102 transition-transform duration-200">
-                    <label className="block text-sm font-semibold mb-2 text-gray-900 flex items-center gap-2">
-                      <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-                      Adresse
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Adresse complète (facultatif)"
-                      value={newZone.address}
-                      onChange={(e) => setNewZone({...newZone, address: e.target.value})}
-                      className="w-full border-2 border-gray-200 rounded-xl p-3.5 placeholder-gray-400 text-gray-900 focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-300 hover:border-gray-300"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="transform hover:scale-102 transition-transform duration-200">
-                      <label className="block text-sm font-semibold mb-2 text-gray-900 flex items-center gap-2">
-                        <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                        Latitude*
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="14.716677"
-                        value={newZone.latitude}
-                        onChange={(e) => setNewZone({...newZone, latitude: e.target.value})}
-                        required
-                        className="w-full border-2 border-gray-200 rounded-xl p-3.5 placeholder-gray-400 text-gray-900 focus:border-green-500 focus:ring-4 focus:ring-green-100 transition-all duration-300 hover:border-gray-300"
-                      />
-                    </div>
-                    <div className="transform hover:scale-102 transition-transform duration-200">
-                      <label className="block text-sm font-semibold mb-2 text-gray-900 flex items-center gap-2">
-                        <span className="w-2 h-2 bg-teal-500 rounded-full"></span>
-                        Longitude*
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="-17.467686"
-                        value={newZone.longitude}
-                        onChange={(e) => setNewZone({...newZone, longitude: e.target.value})}
-                        required
-                        className="w-full border-2 border-gray-200 rounded-xl p-3.5 placeholder-gray-400 text-gray-900 focus:border-teal-500 focus:ring-4 focus:ring-teal-100 transition-all duration-300 hover:border-gray-300"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-2xl p-5 transform hover:scale-102 transition-all duration-300 shadow-sm hover:shadow-md">
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 bg-blue-500 rounded-lg shadow-lg">
-                        <Navigation className="h-5 w-5 text-white"/>
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-blue-900 mb-1">Sélection sur la carte</p>
-                        <p className="text-sm text-blue-700">
-                          Cliquez sur la carte à droite pour définir les coordonnées automatiquement
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <Button 
-                    type="submit" 
-                    className="w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-700 hover:via-purple-700 hover:to-pink-700 text-white py-4 rounded-xl font-bold text-lg transition-all duration-300 shadow-2xl hover:shadow-indigo-500/50 transform hover:scale-105 hover:-translate-y-1"
-                    disabled={isSaving}
-                  >
-                    {isSaving ? (
-                      <>
-                        <Loader2 className="h-5 w-5 animate-spin mr-2"/>
-                        Création en cours...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="h-5 w-5 mr-2"/>
-                        Créer la zone de travail
-                      </>
-                    )}
-                  </Button>
-                </form>
-              </div>
-
-              {/* Carte dans le modal */}
-              <div className="h-[600px] rounded-2xl overflow-hidden border-4 border-indigo-100 shadow-2xl transform hover:scale-102 transition-all duration-500">
-                <MapComponent 
-                  zones={zones}
-                  onLocationSelect={handleLocationSelect}
-                  center={selectedLocation || { lat: 14.716677, lng: -17.467686 }}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <CreateZoneModal 
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSave={handleSaveZone}
+        zones={zones}
+        isLoading={isSaving}
+      />
     </div>
   );
 };

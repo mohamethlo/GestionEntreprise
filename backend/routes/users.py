@@ -167,3 +167,48 @@ def change_password(user_id):
         current_user.set_password(new_password)
         db.session.commit()
         return jsonify({"msg": "Mot de passe mis à jour avec succès"}), 200
+
+@users_bp.route("/techniciens", methods=["GET"])
+@jwt_required()
+def get_techniciens():
+    """
+    Récupère la liste de tous les techniciens actifs.
+    Utilisé pour l'assignation des devis.
+    """
+    try:
+        # Récupérer le rôle "Technicien"
+        technicien_role = Role.query.filter_by(name='Technicien').first()
+        
+        if not technicien_role:
+            return jsonify({
+                'success': True, 
+                'data': [],
+                'message': 'Aucun rôle Technicien trouvé'
+            }), 200
+        
+        # Récupérer tous les utilisateurs actifs avec ce rôle
+        techniciens = User.query.filter_by(
+            role_id=technicien_role.id,
+            is_active=True
+        ).all()
+        
+        data = [{
+            'id': str(t.id),
+            'username': t.username,
+            'nom': t.nom,
+            'prenom': t.prenom,
+            'email': t.email,
+            'telephone': t.telephone,
+            'site': t.site
+        } for t in techniciens]
+        
+        return jsonify({
+            'success': True, 
+            'data': data
+        }), 200
+        
+    except Exception as e:
+        return jsonify({
+            'success': False, 
+            'message': f'Erreur lors de la récupération des techniciens: {str(e)}'
+        }), 500

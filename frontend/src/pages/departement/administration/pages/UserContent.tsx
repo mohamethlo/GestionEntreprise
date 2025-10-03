@@ -1,4 +1,3 @@
-// src/components/rh/pages/RecruitmentContent.jsx
 
 import React, { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -14,7 +13,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { 
   PlusCircle, Edit, Trash2, Users, Mail, Phone, MapPin, Shield, 
   Search, Filter, Zap, Sparkles, Star, Crown, Rocket, Palette,
-  Eye, EyeOff, UserCheck, Settings, UserPlus, Key, Fingerprint, Lock, Loader2
+  Eye, EyeOff, UserCheck, Settings, UserPlus, Key, Fingerprint, Lock, Loader2,
+  CheckCircle2, XCircle
 } from "lucide-react";
 import Swal from "sweetalert2";
 import "sweetalert2/dist/sweetalert2.min.css";
@@ -43,6 +43,20 @@ const UserContent = () => {
     const [searchTerm, setSearchTerm] = useState("");
     const [roleFilter, setRoleFilter] = useState("all");
     const [showPassword, setShowPassword] = useState(false);
+    
+    // État pour le dialogue de réinitialisation de mot de passe
+    const [resetPasswordDialog, setResetPasswordDialog] = useState({ 
+        open: false, 
+        user: null 
+    });
+
+    // État pour le dialogue de succès/erreur
+    const [successDialog, setSuccessDialog] = useState({ 
+        open: false, 
+        title: "", 
+        message: "",
+        type: "success" // "success" | "error"
+    });
 
     const [formData, setFormData] = useState({
         prenom: "",
@@ -137,7 +151,12 @@ const UserContent = () => {
             setApiReady(true); 
         } catch (error) {
             console.error("Erreur rôles:", error);
-            Swal.fire("Erreur", error.message, "error");
+            setSuccessDialog({
+                open: true,
+                title: "Erreur",
+                message: error.message,
+                type: "error"
+            });
             setLoading(false);
         }
     }, [token]);
@@ -163,7 +182,12 @@ const UserContent = () => {
             setUsers(adaptedUsers);
         } catch (error) {
             console.error("Erreur utilisateurs:", error);
-            Swal.fire("Erreur", error.message, "error"); 
+            setSuccessDialog({
+                open: true,
+                title: "Erreur",
+                message: error.message,
+                type: "error"
+            });
         } finally {
             setLoading(false);
         }
@@ -206,7 +230,12 @@ const UserContent = () => {
             }
         } else {
             if (!dataToSend.password || dataToSend.password.trim() === "") {
-                Swal.fire("Erreur", "Le mot de passe est obligatoire pour la création.", "error");
+                setSuccessDialog({
+                    open: true,
+                    title: "Erreur",
+                    message: "Le mot de passe est obligatoire pour la création.",
+                    type: "error"
+                });
                 setLoading(false);
                 return;
             }
@@ -229,19 +258,22 @@ const UserContent = () => {
             }
 
             setOpen(false);
-            await fetchUsers(); 
-            Swal.fire({
-                icon: "success",
+            await fetchUsers();
+            
+            setSuccessDialog({
+                open: true,
                 title: "🎉 Succès !",
-                text: successMsg,
-                confirmButtonColor: "#3b82f6",
-                background: '#ffffff',
-                color: '#1f2937',
-                iconColor: '#10b981'
+                message: successMsg,
+                type: "success"
             });
         } catch (error) {
             console.error("Erreur API:", error);
-            Swal.fire("Erreur", error.message, "error");
+            setSuccessDialog({
+                open: true,
+                title: "Erreur",
+                message: error.message,
+                type: "error"
+            });
         } finally {
             setLoading(false);
         }
@@ -275,17 +307,20 @@ const UserContent = () => {
                     }
 
                     await fetchUsers();
-                    Swal.fire({
-                        title: "🗑️ Supprimé !", 
-                        text: "L'utilisateur a été supprimé.", 
-                        icon: "success",
-                        background: '#ffffff',
-                        color: '#1f2937',
-                        confirmButtonColor: '#3b82f6'
+                    setSuccessDialog({
+                        open: true,
+                        title: "🗑️ Supprimé !",
+                        message: "L'utilisateur a été supprimé.",
+                        type: "success"
                     });
                 } catch (error) {
                     console.error("Erreur suppression:", error);
-                    Swal.fire("Erreur", error.message, "error");
+                    setSuccessDialog({
+                        open: true,
+                        title: "Erreur",
+                        message: error.message,
+                        type: "error"
+                    });
                 } finally {
                     setLoading(false);
                 }
@@ -293,54 +328,56 @@ const UserContent = () => {
         });
     };
 
-    // 5. Réinitialisation du mot de passe
-    const handleResetPassword = useCallback((userId, username) => {
-        const newPassword = "password"; 
+    // 5. Gestion de la réinitialisation du mot de passe (Dialogue personnalisé)
+    const handleResetPasswordClick = (user) => {
+        setResetPasswordDialog({ open: true, user });
+    };
 
-        Swal.fire({
-            title: "Réinitialiser le mot de passe ?",
-            text: `Le mot de passe de ${username} sera réinitialisé à "${newPassword}".`, 
-            icon: "question",
-            showCancelButton: true,
-            confirmButtonText: "Oui, réinitialiser",
-            cancelButtonText: "Annuler",
-            background: '#ffffff',
-            color: '#1f2937'
-        }).then(async (result) => {
-            if (result.isConfirmed) {
-                setLoading(true);
-                try {
-                    const response = await fetch(`${API_BASE_URL}/api/users/${userId}/password`, {
-                        method: "PATCH",
-                        headers: { 
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}` 
-                        },
-                        body: JSON.stringify({ new_password: newPassword }),
-                    });
+    const confirmResetPassword = async () => {
+        if (!resetPasswordDialog.user) return;
+        
+        const { user } = resetPasswordDialog;
+        const newPassword = "password";
+        setLoading(true);
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/users/${user.id}/password`, {
+                method: "PATCH",
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}` 
+                },
+                body: JSON.stringify({ new_password: newPassword }),
+            });
 
-                    const apiResponse = await response.json();
-            
-                    if (!response.ok) {
-                        throw new Error(apiResponse.msg || `Erreur ${response.status} lors de la réinitialisation.`);
-                    }
-
-                    Swal.fire({
-                        title: "Mot de passe réinitialisé !", 
-                        text: `Le nouveau mot de passe est : **${newPassword}**`, 
-                        icon: "success",
-                        background: '#ffffff',
-                        color: '#1f2937'
-                    });
-                } catch (error) {
-                    console.error("Erreur réinitialisation:", error);
-                    Swal.fire("Erreur", error.message, "error");
-                } finally {
-                    setLoading(false);
-                }
+            const apiResponse = await response.json();
+        
+            if (!response.ok) {
+                throw new Error(apiResponse.msg || `Erreur ${response.status} lors de la réinitialisation.`);
             }
-        });
-    }, [token]); 
+
+            setResetPasswordDialog({ open: false, user: null });
+            
+            // Utilisation du Dialog personnalisé pour le succès
+            setSuccessDialog({
+                open: true,
+                title: "Mot de passe réinitialisé !",
+                message: `Le mot de passe de ${user.username} a été réinitialisé à : ${newPassword}`,
+                type: "success"
+            });
+            
+        } catch (error) {
+            console.error("Erreur réinitialisation:", error);
+            setSuccessDialog({
+                open: true,
+                title: "Erreur",
+                message: error.message,
+                type: "error"
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
 
     // --- Fonctions locales pour le formulaire ---
     const handleOpen = () => {
@@ -669,17 +706,26 @@ const UserContent = () => {
 
             {/* Popup Ajout/Édition */}
             <Dialog open={open} onOpenChange={setOpen}>
-                <DialogContent className={`${editingUser ? "max-w-6xl" : "max-w-2xl"} max-h-[90vh] overflow-y-auto rounded-2xl border border-gray-300 bg-white p-0 overflow-hidden shadow-2xl`}>
+                <DialogContent className={`${editingUser ? "max-w-6xl xl:max-w-[90vw] 2xl:max-w-[1200px]" : "max-w-2xl"} max-h-[85vh] overflow-y-auto rounded-2xl border border-gray-300 bg-white p-0 overflow-hidden shadow-2xl`}>
                     {/* Header du Dialog */}
-                    <div className="relative bg-gradient-to-r from-blue-600 to-indigo-600 p-6">
+                    <div className="relative bg-gradient-to-r from-blue-600 to-indigo-600 p-4 sticky top-0 z-20">
                         <div className="absolute inset-0 bg-black/10"></div>
                         <DialogHeader className="relative z-10">
-                            <DialogTitle className="text-2xl font-bold text-white flex items-center gap-3">
-                                <Palette className="h-6 w-6 text-white" />
+                            <DialogTitle className="text-xl font-bold text-white flex items-center gap-2">
+                                <Palette className="h-5 w-5 text-white" />
                                 {editingUser ? "✨ Modifier l'Utilisateur" : "🚀 Créer un Nouvel Utilisateur"}
                             </DialogTitle>
                         </DialogHeader>
-                        <Sparkles className="absolute top-4 right-4 h-6 w-6 text-white animate-spin" />
+                        <Sparkles className="absolute top-3 right-3 h-5 w-5 text-white animate-spin" />
+                        
+                        {/* Bouton fermeture amélioré */}
+                        <Button
+                            variant="ghost"
+                            onClick={() => setOpen(false)}
+                            className="absolute top-3 right-10 h-7 w-7 p-0 rounded-full bg-white/20 hover:bg-white/30 text-white"
+                        >
+                            ×
+                        </Button>
                     </div>
 
                     {/* === AJOUT UTILISATEUR === */}
@@ -802,198 +848,299 @@ const UserContent = () => {
 
                     {/* === MODIFICATION UTILISATEUR === */}
                     {editingUser && (
-                        <div className="p-6">
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                {/* Formulaire d'édition utilisateur */}
-                                <Card className="border-blue-200 bg-white">
-                                    <CardHeader className="bg-blue-600 text-white">
-                                        <CardTitle className="flex items-center gap-2">
-                                            <UserPlus className="h-5 w-5" />
-                                            Formulaire d'édition utilisateur
-                                        </CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="space-y-3 mt-4">
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <div>
-                                                <label className="text-sm font-medium text-gray-700">Nom *</label>
-                                                <Input 
-                                                    placeholder="Nom" 
-                                                    value={formData.nom} 
-                                                    onChange={(e) => setFormData({ ...formData, nom: e.target.value })} 
-                                                    className="border-gray-300"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="text-sm font-medium text-gray-700">Prénom *</label>
-                                                <Input 
-                                                    placeholder="Prénom" 
-                                                    value={formData.prenom} 
-                                                    onChange={(e) => setFormData({ ...formData, prenom: e.target.value })} 
-                                                    className="border-gray-300"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <div>
-                                                <label className="text-sm font-medium text-gray-700">Nom d'utilisateur *</label>
-                                                <Input 
-                                                    placeholder="Nom d'utilisateur" 
-                                                    value={formData.username} 
-                                                    onChange={(e) => setFormData({ ...formData, username: e.target.value })} 
-                                                    className="border-gray-300"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="text-sm font-medium text-gray-700">Adresse e-mail *</label>
-                                                <Input 
-                                                    type="email"
-                                                    placeholder="Email" 
-                                                    value={formData.email} 
-                                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })} 
-                                                    className="border-gray-300"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <div>
-                                                <label className="text-sm font-medium text-gray-700">Téléphone</label>
-                                                <Input 
-                                                    placeholder="Téléphone" 
-                                                    value={formData.telephone} 
-                                                    onChange={(e) => setFormData({ ...formData, telephone: e.target.value })} 
-                                                    className="border-gray-300"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="text-sm font-medium text-gray-700">Site</label>
-                                                <Select onValueChange={(val) => setFormData({ ...formData, site: val })} value={formData.site}>
-                                                    <SelectTrigger className="border-gray-300">
-                                                        <SelectValue placeholder="Sélectionner un site" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {SITES_LIST.map(site => (
-                                                            <SelectItem key={site} value={site}>{site}</SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                        </div>
-                                        {/* Champ mot de passe optionnel pour mise à jour */}
-                                        <div>
-                                            <label className="text-sm font-medium text-gray-700">Nouveau mot de passe (laissez vide si inchangé)</label>
-                                            <Input 
-                                                type="password"
-                                                placeholder="Nouveau mot de passe" 
-                                                value={formData.password} 
-                                                onChange={(e) => setFormData({ ...formData, password: e.target.value })} 
-                                                className="border-gray-300"
-                                            />
-                                        </div>
-                                    </CardContent>
-                                    <CardFooter className="flex gap-2">
-                                        <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={handleSave} disabled={loading}>
-                                            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                            Appliquer les modifications
-                                        </Button>
-                                        <Button variant="outline" onClick={() => setOpen(false)} className="border-gray-300 text-gray-700 hover:bg-gray-50">
-                                            Retourner à la liste
-                                        </Button>
-                                    </CardFooter>
-                                </Card>
-
-                                {/* Colonne droite : Réinitialisation, Rôles, Permissions */}
-                                <div className="space-y-4">
-                                    {/* Réinitialisation mot de passe */}
-                                    <Card className="border-blue-200 bg-white">
-                                        <CardHeader className="bg-blue-600 text-white">
-                                            <CardTitle className="flex items-center gap-2">
-                                                <Key className="h-5 w-5" />
-                                                Réinitialisation de mot de passe
+                        <div className="p-4">
+                            <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 max-h-[65vh] overflow-hidden">
+                                {/* Colonne gauche : Formulaire d'édition avec défilement */}
+                                <div className="xl:col-span-2 space-y-4 h-full">
+                                    <Card className="border-blue-200 bg-white shadow-sm h-full">
+                                        <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-t-lg sticky top-0 z-10">
+                                            <CardTitle className="flex items-center gap-2 text-base">
+                                                <UserPlus className="h-4 w-4" />
+                                                Informations personnelles
                                             </CardTitle>
                                         </CardHeader>
-                                        <CardContent className="pt-4">
-                                            <ul className="list-disc list-inside text-gray-700">
-                                                <li>
-                                                    <Button 
-                                                        variant="link" 
-                                                        className="p-0 h-auto text-blue-600 hover:text-blue-800" 
-                                                        onClick={() => handleResetPassword(editingUser.id, editingUser.username)} 
-                                                        disabled={loading}
+                                        <CardContent className="p-4 space-y-3 overflow-y-auto max-h-[50vh]">
+                                            {/* Grille améliorée pour les champs */}
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                <div className="space-y-1">
+                                                    <label className="text-xs font-semibold text-gray-700 flex items-center gap-1">
+                                                        Nom <span className="text-red-500">*</span>
+                                                    </label>
+                                                    <Input 
+                                                        placeholder="Entrez le nom" 
+                                                        value={formData.nom} 
+                                                        onChange={(e) => setFormData({ ...formData, nom: e.target.value })} 
+                                                        className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 h-9 text-sm"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-xs font-semibold text-gray-700 flex items-center gap-1">
+                                                        Prénom <span className="text-red-500">*</span>
+                                                    </label>
+                                                    <Input 
+                                                        placeholder="Entrez le prénom" 
+                                                        value={formData.prenom} 
+                                                        onChange={(e) => setFormData({ ...formData, prenom: e.target.value })} 
+                                                        className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 h-9 text-sm"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                <div className="space-y-1">
+                                                    <label className="text-xs font-semibold text-gray-700 flex items-center gap-1">
+                                                        Nom d'utilisateur <span className="text-red-500">*</span>
+                                                    </label>
+                                                    <Input 
+                                                        placeholder="Nom d'utilisateur unique" 
+                                                        value={formData.username} 
+                                                        onChange={(e) => setFormData({ ...formData, username: e.target.value })} 
+                                                        className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 h-9 text-sm"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-xs font-semibold text-gray-700 flex items-center gap-1">
+                                                        Email <span className="text-red-500">*</span>
+                                                    </label>
+                                                    <Input 
+                                                        type="email"
+                                                        placeholder="email@exemple.com" 
+                                                        value={formData.email} 
+                                                        onChange={(e) => setFormData({ ...formData, email: e.target.value })} 
+                                                        className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 h-9 text-sm"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                <div className="space-y-1">
+                                                    <label className="text-xs font-semibold text-gray-700">Téléphone</label>
+                                                    <Input 
+                                                        placeholder="+221 XX XXX XX XX" 
+                                                        value={formData.telephone} 
+                                                        onChange={(e) => setFormData({ ...formData, telephone: e.target.value })} 
+                                                        className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 h-9 text-sm"
+                                                    />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <label className="text-xs font-semibold text-gray-700">Site</label>
+                                                    <Select onValueChange={(val) => setFormData({ ...formData, site: val })} value={formData.site}>
+                                                        <SelectTrigger className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 h-9 text-sm">
+                                                            <SelectValue placeholder="Sélectionner un site" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {SITES_LIST.map(site => (
+                                                                <SelectItem key={site} value={site} className="focus:bg-blue-50 text-sm">
+                                                                    {site}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                            </div>
+
+                                            {/* Champ mot de passe avec meilleur design */}
+                                            <div className="space-y-1">
+                                                <label className="text-xs font-semibold text-gray-700">
+                                                    Nouveau mot de passe 
+                                                    <span className="text-gray-500 text-xs ml-1">(laissez vide si inchangé)</span>
+                                                </label>
+                                                <div className="relative">
+                                                    <Input 
+                                                        type={showPassword ? "text" : "password"}
+                                                        placeholder="Entrez un nouveau mot de passe" 
+                                                        value={formData.password} 
+                                                        onChange={(e) => setFormData({ ...formData, password: e.target.value })} 
+                                                        className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 pr-10 h-9 text-sm"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowPassword(!showPassword)}
+                                                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-blue-600 transition-colors duration-200"
                                                     >
-                                                        Réinitialiser le mot de passe
-                                                    </Button>
-                                                    <span className="text-sm text-gray-600"> (par défaut: "password")</span>
-                                                </li>
-                                            </ul>
+                                                        {showPassword ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </CardContent>
+                                        <CardFooter className="flex gap-2 px-4 pb-4 pt-3 bg-gray-50 rounded-b-lg sticky bottom-0">
+                                            <Button 
+                                                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold flex-1 text-sm h-8"
+                                                onClick={handleSave} 
+                                                disabled={loading}
+                                            >
+                                                {loading && <Loader2 className="mr-1 h-3 w-3 animate-spin" />}
+                                                💫 Appliquer
+                                            </Button>
+                                            <Button 
+                                                variant="outline" 
+                                                onClick={() => setOpen(false)} 
+                                                className="border-gray-300 text-gray-700 hover:bg-gray-50 font-semibold text-sm h-8"
+                                            >
+                                                ← Retour
+                                            </Button>
+                                        </CardFooter>
+                                    </Card>
+                                </div>
+
+                                {/* Colonne droite : Actions et configurations avec défilement */}
+                                <div className="space-y-4 h-full overflow-y-auto max-h-[65vh]">
+                                    {/* Carte Réinitialisation mot de passe */}
+                                    <Card className="border-blue-200 bg-white shadow-sm">
+                                        <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-t-lg">
+                                            <CardTitle className="flex items-center gap-2 text-base">
+                                                <Key className="h-4 w-4" />
+                                                Sécurité
+                                            </CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="p-4">
+                                            <div className="space-y-3">
+                                                <div className="flex items-start gap-2">
+                                                    <div className="p-1 bg-blue-100 rounded">
+                                                        <Key className="h-3 w-3 text-blue-600" />
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <h4 className="font-semibold text-gray-900 text-xs mb-1">
+                                                            Réinitialisation du mot de passe
+                                                        </h4>
+                                                        <p className="text-gray-600 text-xs mb-2">
+                                                            Réinitialiser le mot de passe de <strong>{editingUser?.username}</strong> à la valeur par défaut.
+                                                        </p>
+                                                        <Button 
+                                                            variant="outline"
+                                                            className="w-full border-blue-200 text-blue-600 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300 font-medium text-xs h-7"
+                                                            onClick={() => handleResetPasswordClick(editingUser)} 
+                                                            disabled={loading}
+                                                        >
+                                                            <Key className="h-3 w-3 mr-1" />
+                                                            Réinitialiser
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </CardContent>
                                     </Card>
 
-                                    {/* Rôles */}
-                                    <Card className="border-blue-200 bg-white">
-                                        <CardHeader className="bg-blue-600 text-white">
+                                    {/* Carte Rôles avec design amélioré */}
+                                    <Card className="border-blue-200 bg-white shadow-sm">
+                                        <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-t-lg">
                                             <div className="flex items-center justify-between">
-                                                <CardTitle className="flex items-center gap-2">
-                                                    <Fingerprint className="h-5 w-5" />
-                                                    Rôles
+                                                <CardTitle className="flex items-center gap-2 text-base">
+                                                    <Fingerprint className="h-4 w-4" />
+                                                    Rôle utilisateur
                                                 </CardTitle>
-                                                <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={handleSave} disabled={loading}>
-                                                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                                    Appliquer les modifications
+                                                <Button 
+                                                    size="sm" 
+                                                    className="bg-green-500 hover:bg-green-600 text-white border-0 font-semibold text-xs h-6"
+                                                    onClick={handleSave} 
+                                                    disabled={loading}
+                                                >
+                                                    {loading && <Loader2 className="mr-1 h-2 w-2 animate-spin" />}
+                                                    Appliquer
                                                 </Button>
                                             </div>
                                         </CardHeader>
-                                        <CardContent className="pt-4">
-                                            <Accordion type="single" collapsible>
+                                        <CardContent className="p-3">
+                                            <div className="space-y-2">
                                                 {roles.map((role) => {
-                                                    if (!['Administrateur', 'Commercial', 'Technicien', 'Administration', 'Dev_administration'].includes(role.name)) return null;
+                                                    if (!['Administrateur', 'Commercial', 'Technicien', 'Administration', 'Dev_administration'].includes(role.name)) 
+                                                        return null;
+
+                                                    const isActive = getRoleStatus(role.name);
+                                                    const roleColors = {
+                                                        'Administrateur': 'border-red-200 bg-red-50',
+                                                        'Commercial': 'border-blue-200 bg-blue-50', 
+                                                        'Technicien': 'border-green-200 bg-green-50',
+                                                        'Administration': 'border-purple-200 bg-purple-50',
+                                                        'Dev_administration': 'border-orange-200 bg-orange-50'
+                                                    };
 
                                                     return (
-                                                        <AccordionItem key={role.id} value={role.name}>
+                                                        <div 
+                                                            key={role.id}
+                                                            className={`p-2 rounded border-2 transition-all duration-200 cursor-pointer ${
+                                                                isActive 
+                                                                    ? `${roleColors[role.name]} ring-1 ring-opacity-50 ring-blue-500 shadow-xs` 
+                                                                    : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
+                                                            }`}
+                                                            onClick={() => toggleRole(role.name)}
+                                                        >
                                                             <div className="flex items-center justify-between">
-                                                                <AccordionTrigger className="flex-1 text-gray-900">{role.name}</AccordionTrigger>
-                                                                <div className="flex items-center gap-2 mr-4">
-                                                                    <Switch 
-                                                                        checked={getRoleStatus(role.name)}
-                                                                        onCheckedChange={() => toggleRole(role.name)}
-                                                                    />
-                                                                    <span className="text-sm text-gray-700">{getRoleStatus(role.name) ? 'Activé' : 'Désactivé'}</span>
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className={`p-1 rounded ${isActive ? 'bg-white shadow-xs' : 'bg-gray-100'}`}>
+                                                                        {role.name === 'Administrateur' && <Crown className="h-3 w-3 text-red-600" />}
+                                                                        {role.name === 'Commercial' && <Settings className="h-3 w-3 text-blue-600" />}
+                                                                        {role.name === 'Technicien' && <UserCheck className="h-3 w-3 text-green-600" />}
+                                                                        {role.name === 'Administration' && <Shield className="h-3 w-3 text-purple-600" />}
+                                                                        {role.name === 'Dev_administration' && <Zap className="h-3 w-3 text-orange-600" />}
+                                                                    </div>
+                                                                    <div>
+                                                                        <span className="font-semibold text-gray-900 text-xs block">
+                                                                            {role.name}
+                                                                        </span>
+                                                                        <span className="text-gray-500 text-xs">
+                                                                            {isActive ? 'Rôle actif' : 'Rôle inactif'}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="flex items-center gap-1">
+                                                                    <div className={`w-2 h-2 rounded-full ${isActive ? 'bg-green-500' : 'bg-gray-300'}`} />
+                                                                    <span className="text-xs font-medium text-gray-700">
+                                                                        {isActive ? 'Activé' : 'Désactivé'}
+                                                                    </span>
                                                                 </div>
                                                             </div>
-                                                            <AccordionContent className="text-gray-600">
-                                                                {role.name === 'Administrateur' && 'Accès complet à toutes les fonctionnalités du système.'}
-                                                                {role.name === 'Commercial' && 'Accès limité aux fonctionnalités de gestion (Client, Intervention, Pointage).'}
-                                                                {role.name === 'Technicien' && 'Accès aux fonctionnalités basiques pour techniciens (Pointage, Intervention).'}
-                                                                {role.name === 'Administration' && 'Accès aux fonctionnalités d\'administration (Pointage, Intervention).'}
-                                                                {role.name === 'Dev_administration' && 'Accès aux fonctionnalités de développement et administration (Pointage).'}
-                                                            </AccordionContent>
-                                                        </AccordionItem>
+                                                            {isActive && (
+                                                                <div className="mt-1 text-xs text-gray-600 pl-8">
+                                                                    {role.name === 'Administrateur' && 'Accès complet à toutes les fonctionnalités.'}
+                                                                    {role.name === 'Commercial' && 'Accès limité aux fonctionnalités de gestion.'}
+                                                                    {role.name === 'Technicien' && 'Accès aux fonctionnalités basiques.'}
+                                                                    {role.name === 'Administration' && 'Accès aux fonctionnalités d\'administration.'}
+                                                                    {role.name === 'Dev_administration' && 'Accès aux fonctionnalités de développement.'}
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     );
                                                 })}
-                                            </Accordion>
+                                            </div>
                                         </CardContent>
                                     </Card>
-                                    
-                                    {/* Permissions */}
-                                    <Card className="border-blue-200 bg-white">
-                                        <CardHeader className="bg-blue-600 text-white">
-                                            <CardTitle className="flex items-center gap-2">
-                                                <Lock className="h-5 w-5" />
-                                                Permissions supplémentaires
+
+                                    {/* Carte Permissions avec design amélioré */}
+                                    <Card className="border-blue-200 bg-white shadow-sm">
+                                        <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-t-lg">
+                                            <CardTitle className="flex items-center gap-2 text-base">
+                                                <Lock className="h-4 w-4" />
+                                                Permissions
                                             </CardTitle>
                                         </CardHeader>
-                                        <CardContent className="pt-4">
-                                            <div className="grid grid-cols-2 gap-3">
-                                                {permissionsList.map((perm) => (
-                                                    <label key={perm.name} className="flex items-center space-x-2 text-gray-700">
-                                                        <Checkbox 
-                                                            checked={formData.permissions.includes(perm.name)} 
-                                                            onCheckedChange={() => togglePermission(perm.name)} 
-                                                        />
-                                                        <span>{perm.name.charAt(0).toUpperCase() + perm.name.slice(1)}</span>
-                                                    </label>
-                                                ))}
+                                        <CardContent className="p-3">
+                                            <div className="space-y-2">
+                                                <p className="text-gray-600 text-xs mb-2">
+                                                    Sélectionnez les permissions supplémentaires.
+                                                </p>
+                                                <div className="grid grid-cols-1 gap-1">
+                                                    {permissionsList.map((perm) => (
+                                                        <label 
+                                                            key={perm.name} 
+                                                            className={`flex items-center space-x-2 p-2 rounded border-2 cursor-pointer transition-all duration-200 ${
+                                                                formData.permissions.includes(perm.name) 
+                                                                    ? 'border-blue-500 bg-blue-50 shadow-xs' 
+                                                                    : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
+                                                            }`}
+                                                        >
+                                                            <Checkbox 
+                                                                checked={formData.permissions.includes(perm.name)} 
+                                                                onCheckedChange={() => togglePermission(perm.name)}
+                                                                className="data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600 h-3 w-3"
+                                                            />
+                                                            <span className="text-gray-900 font-medium text-xs flex items-center gap-1">
+                                                                <span className="text-sm">{perm.icon}</span>
+                                                                {perm.name.charAt(0).toUpperCase() + perm.name.slice(1)}
+                                                            </span>
+                                                        </label>
+                                                    ))}
+                                                </div>
                                             </div>
                                         </CardContent>
                                     </Card>
@@ -1001,6 +1148,71 @@ const UserContent = () => {
                             </div>
                         </div>
                     )}
+                </DialogContent>
+            </Dialog>
+
+            {/* Dialogue de confirmation pour la réinitialisation du mot de passe */}
+            <Dialog open={resetPasswordDialog.open} onOpenChange={(open) => setResetPasswordDialog({ open, user: null })}>
+                <DialogContent className="max-w-md rounded-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Key className="h-5 w-5" />
+                            Réinitialiser le mot de passe ?
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="py-4">
+                        <p className="text-gray-600">
+                            Le mot de passe de <strong>{resetPasswordDialog.user?.username}</strong> sera réinitialisé à "<strong>password</strong>".
+                        </p>
+                    </div>
+                    <DialogFooter className="gap-2">
+                        <Button 
+                            variant="outline" 
+                            onClick={() => setResetPasswordDialog({ open: false, user: null })}
+                            className="border-gray-300"
+                        >
+                            Annuler
+                        </Button>
+                        <Button 
+                            onClick={confirmResetPassword}
+                            className="bg-blue-600 hover:bg-blue-700"
+                            disabled={loading}
+                        >
+                            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Oui, réinitialiser
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Dialogue de succès/erreur personnalisé */}
+            <Dialog open={successDialog.open} onOpenChange={(open) => setSuccessDialog({ ...successDialog, open })}>
+                <DialogContent className="max-w-md rounded-2xl">
+                    <DialogHeader>
+                        <DialogTitle className={`flex items-center gap-2 ${successDialog.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+                            {successDialog.type === 'success' ? (
+                                <CheckCircle2 className="h-5 w-5" />
+                            ) : (
+                                <XCircle className="h-5 w-5" />
+                            )}
+                            {successDialog.title}
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="py-4">
+                        <p className="text-gray-600">{successDialog.message}</p>
+                    </div>
+                    <DialogFooter>
+                        <Button 
+                            onClick={() => setSuccessDialog({ open: false, title: "", message: "", type: "success" })}
+                            className={`w-full ${
+                                successDialog.type === 'success' 
+                                    ? 'bg-green-600 hover:bg-green-700' 
+                                    : 'bg-blue-600 hover:bg-blue-700'
+                            }`}
+                        >
+                            OK
+                        </Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
         </div>
