@@ -43,10 +43,13 @@ class Devis(db.Model):
     commentaire = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     assigned_to = db.Column(db.Integer, db.ForeignKey('user.id'))
-    status = db.Column(db.String(20), default='pending')
+    status = db.Column(db.String(20), default='en_attente')
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    
+    # Relations
     user = db.relationship('User', foreign_keys=[user_id], backref='created_devis')
-    technician = db.relationship('User', foreign_keys=[assigned_to], backref='assigned_devis')
+    assigned_user = db.relationship('User', foreign_keys=[assigned_to], backref='assigned_devis') 
+
 
 class Reminder(db.Model):
     __tablename__ = 'reminder'

@@ -1,44 +1,66 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Edit, Trash2, FileText, User, Phone, MessageSquare, UserCog } from "lucide-react";
+import { Plus, Edit, Trash2, FileText, User, Phone, MessageSquare, UserCog, Loader2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Swal from "sweetalert2";
 import "sweetalert2/dist/sweetalert2.min.css";
+import axios from "axios";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
+
+// Configuration API
+const API_BASE_URL = "http://localhost:5000";
+const AUTH_TOKEN_KEY = 'authToken';
+
+// Récupère le token JWT depuis le localStorage
+const useAuthToken = () => {
+  return localStorage.getItem(AUTH_TOKEN_KEY);
+};
+
+interface User {
+  id: string;
+  username: string;
+  nom: string;
+  prenom: string;
+}
 
 interface Devis {
-  id: string;
+  id: number;
   nom: string;
   prenom: string;
   telephone: string;
   commentaire: string;
-  dateCreation: string;
-  statut: 'en_attente' | 'assigné' | 'traité' | 'refusé';
-  technicien?: {
-    id: string;
-    nom: string;
-  };
+  created_at: string;
+  status: 'en_attente' | 'assigned' | 'completed' | 'refused';
+  user_id: string;
+  assigned_to?: string;
+  assigned_user?: User;
 }
 
-const techniciens = [
-  { id: '1', nom: 'Jean Dupont' },
-  { id: '2', nom: 'Marie Martin' },
-  { id: '3', nom: 'Pierre Durand' },
-  { id: '4', nom: 'Sophie Petit' },
-];
+interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  message?: string;
+}
 
 const DevisContent = () => {
+  const token = useAuthToken();
   const [devisList, setDevisList] = useState<Devis[]>([]);
+  const [techniciens, setTechniciens] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [openAssign, setOpenAssign] = useState(false);
-  const [currentDevisId, setCurrentDevisId] = useState<string | null>(null);
+  const [currentDevisId, setCurrentDevisId] = useState<number | null>(null);
   const [selectedTechnicien, setSelectedTechnicien] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
   const [formData, setFormData] = useState({
     nom: "",
     prenom: "",
@@ -46,13 +68,62 @@ const DevisContent = () => {
     commentaire: "",
   });
 
+  // Récupérer la liste des devis
+  const fetchDevis = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get<ApiResponse<Devis[]>>(
+        `${API_BASE_URL}/api/devis`,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      
+      if (response.data.success && response.data.data) {
+        setDevisList(response.data.data);
+      }
+    } catch (error) {
+      console.error("Erreur lors de la récupération des devis:", error);
+      Swal.fire({
+        title: 'Erreur',
+        text: 'Impossible de charger la liste des devis',
+        icon: 'error',
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  // Récupérer la liste des techniciens
+  const fetchTechniciens = useCallback(async () => {
+    try {
+      const response = await axios.get<ApiResponse<User[]>>(
+        `${API_BASE_URL}/api/users/techniciens`,
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      
+      if (response.data.success && response.data.data) {
+        setTechniciens(response.data.data);
+      }
+    } catch (error) {
+      console.error("Erreur lors de la récupération des techniciens:", error);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    fetchDevis();
+    fetchTechniciens();
+  }, [fetchDevis, fetchTechniciens]);
+
   const handleOpen = (devis: Devis | null = null) => {
     if (devis) {
       setFormData({
-        nom: devis.nom,
-        prenom: devis.prenom,
-        telephone: devis.telephone,
-        commentaire: devis.commentaire,
+        nom: devis.nom || "",
+        prenom: devis.prenom || "",
+        telephone: devis.telephone || "",
+        commentaire: devis.commentaire || "",
       });
       setCurrentDevisId(devis.id);
     } else {
@@ -67,128 +138,160 @@ const DevisContent = () => {
     setOpen(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     
-    if (currentDevisId) {
-      // Mise à jour d'un devis existant
-      setDevisList(
-        devisList.map((devis) =>
-          devis.id === currentDevisId
-            ? {
-                ...devis,
-                ...formData,
-              }
-            : devis
-        )
+    try {
+      const url = currentDevisId 
+        ? `${API_BASE_URL}/api/devis/${currentDevisId}`
+        : `${API_BASE_URL}/api/devis`;
+      
+      const method = currentDevisId ? 'put' : 'post';
+      
+      const response = await axios[method]<ApiResponse<Devis>>(
+        url,
+        formData,
+        {
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        }
       );
+      
+      if (response.data.success) {
+        await fetchDevis(); // Rafraîchir la liste des devis
+        
+        Swal.fire({
+          title: 'Succès!',
+          text: `Le devis a été ${currentDevisId ? 'mis à jour' : 'créé'} avec succès.`,
+          icon: 'success',
+        });
+        
+        setOpen(false);
+        setFormData({
+          nom: "",
+          prenom: "",
+          telephone: "",
+          commentaire: "",
+        });
+        setCurrentDevisId(null);
+      }
+    } catch (error) {
+      console.error("Erreur lors de la soumission du devis:", error);
       Swal.fire({
-        title: "Succès !",
-        text: "Le devis a été mis à jour avec succès.",
-        icon: "success",
-        confirmButtonColor: "#3b82f6",
+        title: 'Erreur',
+        text: `Une erreur est survenue lors de ${currentDevisId ? 'la mise à jour' : 'la création'} du devis`,
+        icon: 'error',
       });
-    } else {
-      // Création d'un nouveau devis
-      const newDevis: Devis = {
-        id: Date.now().toString(),
-        dateCreation: new Date().toISOString(),
-        statut: 'en_attente',
-        ...formData,
-      };
-      setDevisList([...devisList, newDevis]);
-      Swal.fire({
-        title: "Succès !",
-        text: "Le devis a été créé avec succès.",
-        icon: "success",
-        confirmButtonColor: "#3b82f6",
-      });
+    } finally {
+      setIsSubmitting(false);
     }
-    setOpen(false);
   };
 
-  const handleDelete = (id: string) => {
-    Swal.fire({
-      title: "Êtes-vous sûr ?",
-      text: "Cette action est irréversible !",
-      icon: "warning",
+  const handleDelete = async (id: number) => {
+    const result = await Swal.fire({
+      title: 'Êtes-vous sûr?',
+      text: "Vous ne pourrez pas revenir en arrière!",
+      icon: 'warning',
       showCancelButton: true,
-      confirmButtonColor: "#ef4444",
-      cancelButtonColor: "#6b7280",
-      confirmButtonText: "Oui, supprimer",
-      cancelButtonText: "Annuler",
-    }).then((result) => {
-      if (result.isConfirmed) {
-        setDevisList(devisList.filter((devis) => devis.id !== id));
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Oui, supprimer!',
+      cancelButtonText: 'Annuler'
+    });
+    
+    if (result.isConfirmed) {
+      try {
+        await axios.delete(`${API_BASE_URL}/api/devis/${id}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        await fetchDevis(); // Rafraîchir la liste des devis
+        
+        Swal.fire(
+          'Supprimé!',
+          'Le devis a été supprimé avec succès.',
+          'success'
+        );
+      } catch (error) {
+        console.error("Erreur lors de la suppression du devis:", error);
         Swal.fire({
-          title: "Supprimé !",
-          text: "Le devis a été supprimé.",
-          icon: "success",
-          confirmButtonColor: "#3b82f6",
+          title: 'Erreur',
+          text: 'Une erreur est survenue lors de la suppression du devis',
+          icon: 'error',
         });
       }
-    });
+    }
   };
 
-  const handleAssign = (id: string) => {
+  const handleAssign = (id: number) => {
     setCurrentDevisId(id);
-    setSelectedTechnicien('');
     setOpenAssign(true);
   };
 
-  const handleAssignSubmit = () => {
-    if (!selectedTechnicien) {
+  const handleAssignSubmit = async () => {
+    if (!currentDevisId || !selectedTechnicien) return;
+    
+    try {
+      const response = await axios.put<ApiResponse<Devis>>(
+        `${API_BASE_URL}/api/devis/${currentDevisId}/assign`,
+        { assigned_to: selectedTechnicien },
+        {
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+      
+      if (response.data.success) {
+        await fetchDevis(); // Rafraîchir la liste des devis
+        
+        setOpenAssign(false);
+        setSelectedTechnicien('');
+        setCurrentDevisId(null);
+        
+        Swal.fire({
+          title: 'Succès!',
+          text: 'Le technicien a été assigné avec succès.',
+          icon: 'success',
+        });
+      }
+    } catch (error) {
+      console.error("Erreur lors de l'assignation du technicien:", error);
       Swal.fire({
-        title: "Erreur",
-        text: "Veuillez sélectionner un technicien",
-        icon: "error",
-        confirmButtonColor: "#3b82f6",
+        title: 'Erreur',
+        text: 'Une erreur est survenue lors de l\'assignation du technicien',
+        icon: 'error',
       });
-      return;
     }
-
-    setDevisList(
-      devisList.map((devis) =>
-        devis.id === currentDevisId
-          ? {
-              ...devis,
-              statut: 'assigné',
-              technicien: techniciens.find(t => t.id === selectedTechnicien),
-            }
-          : devis
-      )
-    );
-
-    setOpenAssign(false);
-    Swal.fire({
-      title: "Succès !",
-      text: "Le technicien a été assigné avec succès.",
-      icon: "success",
-      confirmButtonColor: "#3b82f6",
-    });
   };
 
-  const getStatusBadge = (status: Devis['statut']) => {
-    const statusMap = {
-      'en_attente': { label: 'En attente', color: 'bg-yellow-100 text-yellow-800' },
-      'assigné': { label: 'Assigné', color: 'bg-blue-100 text-blue-800' },
-      'traité': { label: 'Traité', color: 'bg-green-100 text-green-800' },
-      'refusé': { label: 'Refusé', color: 'bg-red-100 text-red-800' },
-    };
-    
-    const statusInfo = statusMap[status] || { label: status, color: 'bg-gray-100 text-gray-800' };
-    
-    return (
-      <Badge className={`${statusInfo.color} hover:${statusInfo.color}`}>
-        {statusInfo.label}
-      </Badge>
-    );
+  const getStatusBadge = (status: Devis['status']) => {
+    switch (status) {
+      case 'en_attente':
+        return <Badge variant="secondary">En attente</Badge>;
+      case 'assigned':
+        return <Badge className="bg-blue-500 hover:bg-blue-600">Assigné</Badge>;
+      case 'completed':
+        return <Badge className="bg-green-500 hover:bg-green-600">Terminé</Badge>;
+      case 'refused':
+        return <Badge variant="destructive">Refusé</Badge>;
+      default:
+        return <Badge variant="outline">Inconnu</Badge>;
+    }
+  };
+  
+  const formatDate = (dateString: string) => {
+    return format(new Date(dateString), 'PPP', { locale: fr });
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold tracking-tight">Gestion des Devis</h2>
+    <div className="container mx-auto py-6">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Gestion des Devis</h1>
         <Button onClick={() => handleOpen()}>
           <Plus className="mr-2 h-4 w-4" />
           Nouveau Devis
@@ -203,7 +306,11 @@ const DevisContent = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {devisList.length === 0 ? (
+          {loading ? (
+            <div className="flex justify-center items-center h-64">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : devisList.length === 0 ? (
             <div className="text-center py-12">
               <FileText className="mx-auto h-12 w-12 text-gray-400" />
               <h3 className="mt-2 text-sm font-medium text-gray-900">Aucun devis</h3>
@@ -224,51 +331,57 @@ const DevisContent = () => {
                     <TableHead>Prénom</TableHead>
                     <TableHead>Téléphone</TableHead>
                     <TableHead>Statut</TableHead>
-                    <TableHead>Technicien</TableHead>
-                    <TableHead>Date</TableHead>
+                    <TableHead>Date de création</TableHead>
+                    <TableHead>Assigné à</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {devisList.map((devis) => (
                     <TableRow key={devis.id}>
-                      <TableCell className="font-medium">{devis.nom}</TableCell>
+                      <TableCell>{devis.nom}</TableCell>
                       <TableCell>{devis.prenom}</TableCell>
                       <TableCell>{devis.telephone}</TableCell>
-                      <TableCell>{getStatusBadge(devis.statut)}</TableCell>
+                      <TableCell>{getStatusBadge(devis.status)}</TableCell>
+                      <TableCell>{formatDate(devis.created_at)}</TableCell>
                       <TableCell>
-                        {devis.technicien?.nom || '-'}
+                        {devis.assigned_user ? (
+                          <div className="flex items-center gap-2">
+                            <UserCog className="h-4 w-4 text-muted-foreground" />
+                            {devis.assigned_user.prenom} {devis.assigned_user.nom}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">Non assigné</span>
+                        )}
                       </TableCell>
-                      <TableCell>
-                        {new Date(devis.dateCreation).toLocaleDateString("fr-FR", {
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                        })}
-                      </TableCell>
-                      <TableCell className="text-right space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleOpen(devis)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleAssign(devis.id)}
-                          disabled={devis.statut === 'assigné' || devis.statut === 'traité'}
-                        >
-                          <UserCog className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => handleDelete(devis.id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => handleOpen(devis)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => handleDelete(devis.id)}
+                            disabled={devis.status !== 'en_attente'}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="text-blue-600 hover:text-blue-700"
+                            onClick={() => handleAssign(devis.id)}
+                            disabled={devis.status !== 'en_attente'}
+                          >
+                            <UserCog className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -279,105 +392,123 @@ const DevisContent = () => {
         </CardContent>
       </Card>
 
-      {/* Formulaire d'ajout/modification */}
+      {/* Modal d'ajout/édition de devis */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>
-              {currentDevisId ? "Modifier le Devis" : "Créer un Devis"}
+              {currentDevisId ? 'Modifier le devis' : 'Nouveau devis'}
             </DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="nom">Nom *</Label>
+          <form onSubmit={handleSubmit}>
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="nom" className="text-right">
+                  Nom
+                </Label>
                 <Input
                   id="nom"
-                  placeholder="Nom du client"
                   value={formData.nom}
                   onChange={(e) =>
                     setFormData({ ...formData, nom: e.target.value })
                   }
+                  className="col-span-3"
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="prenom">Prénom *</Label>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="prenom" className="text-right">
+                  Prénom
+                </Label>
                 <Input
                   id="prenom"
-                  placeholder="Prénom du client"
                   value={formData.prenom}
                   onChange={(e) =>
                     setFormData({ ...formData, prenom: e.target.value })
                   }
+                  className="col-span-3"
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="telephone">Téléphone *</Label>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="telephone" className="text-right">
+                  Téléphone
+                </Label>
                 <Input
                   id="telephone"
                   type="tel"
-                  placeholder="+221 77 123 45 67"
                   value={formData.telephone}
                   onChange={(e) =>
                     setFormData({ ...formData, telephone: e.target.value })
                   }
+                  className="col-span-3"
                   required
                 />
               </div>
+              <div className="grid grid-cols-4 items-start gap-4">
+                <Label htmlFor="commentaire" className="text-right mt-2">
+                  Commentaire
+                </Label>
+                <Textarea
+                  id="commentaire"
+                  value={formData.commentaire}
+                  onChange={(e) =>
+                    setFormData({ ...formData, commentaire: e.target.value })
+                  }
+                  className="col-span-3"
+                  rows={4}
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="commentaire">Commentaire</Label>
-              <Textarea
-                id="commentaire"
-                placeholder="Détails supplémentaires..."
-                value={formData.commentaire}
-                onChange={(e) =>
-                  setFormData({ ...formData, commentaire: e.target.value })
-                }
-                rows={4}
-              />
-            </div>
-            <DialogFooter className="mt-6">
-              <Button
-                type="button"
-                variant="outline"
+            <DialogFooter>
+              <Button 
+                type="button" 
+                variant="outline" 
                 onClick={() => setOpen(false)}
+                disabled={isSubmitting}
               >
                 Annuler
               </Button>
-              <Button type="submit">
-                {currentDevisId ? "Mettre à jour" : "Créer le devis"}
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {currentDevisId ? 'Mise à jour...' : 'Création...'}
+                  </>
+                ) : (
+                  <>{currentDevisId ? 'Mettre à jour' : 'Créer'}</>
+                )}
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* Dialogue d'assignation de technicien */}
+      {/* Modal d'assignation de technicien */}
       <Dialog open={openAssign} onOpenChange={setOpenAssign}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Assigner un technicien</DialogTitle>
             <DialogDescription>
               Sélectionnez un technicien à assigner à ce devis.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="technicien">Technicien *</Label>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="technicien" className="text-right">
+                Technicien
+              </Label>
               <Select 
                 value={selectedTechnicien} 
                 onValueChange={setSelectedTechnicien}
               >
-                <SelectTrigger>
+                <SelectTrigger className="col-span-3">
                   <SelectValue placeholder="Sélectionner un technicien" />
                 </SelectTrigger>
                 <SelectContent>
                   {techniciens.map((tech) => (
                     <SelectItem key={tech.id} value={tech.id}>
-                      {tech.nom}
+                      {tech.prenom} {tech.nom}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -388,14 +519,22 @@ const DevisContent = () => {
             <Button 
               variant="outline" 
               onClick={() => setOpenAssign(false)}
+              disabled={isSubmitting}
             >
               Annuler
             </Button>
             <Button 
-              onClick={handleAssignSubmit}
-              disabled={!selectedTechnicien}
+              onClick={() => handleAssignSubmit()}
+              disabled={!selectedTechnicien || isSubmitting}
             >
-              Assigner
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Assignation...
+                </>
+              ) : (
+                'Assigner'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
