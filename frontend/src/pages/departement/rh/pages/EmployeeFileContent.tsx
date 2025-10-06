@@ -1,85 +1,116 @@
-// src/components/rh/pages/EmployeeFileContent.jsx
+import React, { useState, useEffect } from "react";
+import Swal from "sweetalert2";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { employeeService } from "@/api/employeeService";
+import EmployeeFileContent, { Employee } from "./GestionEmploye/DetailsEmployee";
+import AddEmployeeForm from "./GestionEmploye/AddEmployeeForm";
 
-import React from 'react';
+const EmployeeFilePage: React.FC = () => {
+  const [search, setSearch] = useState("");
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState(true);
 
-const EmployeeFileContent = () => {
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      try {
+        const data = await employeeService.getAll();
+        setEmployees(data);
+      } catch (error) {
+        console.error("Erreur de chargement :", error);
+        Swal.fire("Erreur", "Impossible de charger les employés", "error");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchEmployees();
+  }, []);
+
+  const handleAddEmployee = async (newEmployee: Omit<Employee, 'id'>) => {
+    try {
+      const created = await employeeService.create(newEmployee);
+      setEmployees(prev => [created, ...prev]);
+
+      await Swal.fire({
+        title: "Succès !",
+        text: `Employé ${newEmployee.firstName} ${newEmployee.lastName} ajouté avec succès !`,
+        icon: "success",
+      });
+
+      return true;
+    } catch (error) {
+      console.error("Erreur API :", error);
+      Swal.fire("Erreur", "Échec de l'ajout de l'employé", "error");
+      return false;
+    }
+  };
+
+  const filteredEmployees = employees.filter(emp =>
+    emp.firstName.toLowerCase().includes(search.toLowerCase()) ||
+    emp.lastName.toLowerCase().includes(search.toLowerCase()) ||
+    emp.job.toLowerCase().includes(search.toLowerCase())
+  );
+
+  if (selectedEmployee) {
     return (
-        <div className="min-h-screen bg-white p-8">
-            <div className="max-w-4xl mx-auto">
-                {/* En-tête */}
-                <div className="text-center mb-12">
-                    <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl shadow-sm mb-6">
-                        <span className="text-3xl">👤</span>
-                    </div>
-                    <h2 className="text-4xl font-bold text-gray-900 mb-4">
-                        Fiche Employé
-                    </h2>
-                    <p className="text-xl text-gray-600 max-w-2xl mx-auto leading-relaxed">
-                        Gérez la consultation, l'édition et la création des fiches individuelles 
-                        des employés de votre organisation.
-                    </p>
-                </div>
-
-                {/* Cartes de fonctionnalités */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-                    <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-300">
-                        <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
-                            <span className="text-lg">🔍</span>
-                        </div>
-                        <h3 className="font-semibold text-gray-900 mb-2">Recherche</h3>
-                        <p className="text-sm text-gray-600">
-                            Recherchez rapidement un employé par nom, département ou matricule
-                        </p>
-                    </div>
-
-                    <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-300">
-                        <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
-                            <span className="text-lg">📝</span>
-                        </div>
-                        <h3 className="font-semibold text-gray-900 mb-2">Édition</h3>
-                        <p className="text-sm text-gray-600">
-                            Modifiez les informations personnelles et professionnelles des employés
-                        </p>
-                    </div>
-
-                    <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow duration-300">
-                        <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mb-4">
-                            <span className="text-lg">➕</span>
-                        </div>
-                        <h3 className="font-semibold text-gray-900 mb-2">Création</h3>
-                        <p className="text-sm text-gray-600">
-                            Ajoutez de nouveaux employés au système en quelques clics
-                        </p>
-                    </div>
-                </div>
-
-                {/* Section d'action */}
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-8 text-center">
-                    <h3 className="text-2xl font-semibold text-gray-900 mb-4">
-                        Commencez dès maintenant
-                    </h3>
-                    <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                        Utilisez la barre de recherche pour trouver un employé ou créez une nouvelle fiche.
-                    </p>
-                    <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                        <button className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors duration-300 shadow-sm">
-                            Rechercher un employé
-                        </button>
-                        <button className="px-6 py-3 bg-white text-gray-900 border border-gray-300 rounded-lg font-medium hover:bg-gray-50 transition-colors duration-300 shadow-sm">
-                            Nouvelle fiche
-                        </button>
-                    </div>
-                </div>
-
-                {/* Note informative */}
-                <div className="text-center mt-8">
-                    <p className="text-sm text-gray-500">
-                        Ajoutez ici la logique de recherche d'employés et les détails du dossier.
-                    </p>
-                </div>
-            </div>
-        </div>
+      <EmployeeFileContent
+        employee={selectedEmployee}
+        onBack={() => setSelectedEmployee(null)}
+      />
     );
+  }
+
+  if (loading) {
+    return <div className="text-center py-10 text-gray-500">Chargement des employés...</div>;
+  }
+
+  return (
+    <div className="p-8 space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-3xl font-bold text-blue-700">Liste des employés</h2>
+        <AddEmployeeForm onAddEmployee={handleAddEmployee} />
+      </div>
+
+      <div className="flex justify-center">
+        <Input
+          placeholder="Rechercher un employé..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="w-full max-w-xl"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filteredEmployees.length === 0 ? (
+          <div className="col-span-full text-center py-8 text-gray-500">
+            Aucun employé trouvé.
+          </div>
+        ) : (
+          filteredEmployees.map(emp => (
+            <Card
+              key={emp.id}
+              className="cursor-pointer hover:shadow-lg transition"
+              onClick={() => setSelectedEmployee(emp)}
+            >
+              <CardHeader>
+                <CardTitle>{emp.firstName} {emp.lastName}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p><strong>Poste :</strong> {emp.job}</p>
+                <p><strong>Département :</strong> {emp.department}</p>
+                <p><strong>Email :</strong> {emp.email}</p>
+                <Button className="mt-2 w-full" onClick={() => setSelectedEmployee(emp)}>
+                  Voir la fiche
+                </Button>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
+    </div>
+  );
 };
 
-export default EmployeeFileContent;
+export default EmployeeFilePage;
