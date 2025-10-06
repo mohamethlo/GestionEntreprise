@@ -13,6 +13,7 @@ from .products import products_bp
 from .devis import devis_bp
 from .inventory import inventory_bp
 from .expenses import expenses_bp
+from routes.leaves import leaves_bp
 
 
 def register_blueprints(app: Flask):
@@ -34,3 +35,4 @@ def register_blueprints(app: Flask):
     app.register_blueprint(devis_bp, url_prefix="/api/devis")
     app.register_blueprint(inventory_bp, url_prefix="/api/inventory")
     app.register_blueprint(expenses_bp, url_prefix="/api/expenses")
+    app.register_blueprint(leaves_bp, url_prefix="/api/leaves")

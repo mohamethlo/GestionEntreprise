@@ -12,8 +12,6 @@ const DashboardContent = () => {
             { title: "Administrateurs", value: "1", color: "success" },
             { title: "Techniciens", value: "2", color: "destructive" },
             { title: "Commercial", value: "1", color: "warning" },
-            { title: "RH", value: "2", color: "warning" },
-            { title: "Comptable", value: "2", color: "commercial" },
             { title: "Heure Pointage entrée", value: "9h15", color: "destructive" },
             { title: "Heure Pointage sortie", value: "17h00", color: "destructive" },
             { title: "Temps de pause", value: "1h", color: "warning" },
@@ -22,8 +20,6 @@ const DashboardContent = () => {
         const performanceData = [
             { title: "Actifs", value: "12", unit: "Utilisateur", color: "success" },
             { title: "Crées", value: "5", unit: "Roles", color: "warning" },
-            { title: "Configurés", value: "15", unit: "Permissions", color: "success" },
-            { title: "Modifiés", value: "0", unit: "Paramètres", color: "commercial" }
         ];
         return { metrics, performanceData };
     }, []);

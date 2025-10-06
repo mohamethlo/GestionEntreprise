@@ -15,15 +15,11 @@ const DashboardContent = () => {
             { title: "Devis Assigné", value: "2", color: "finance" },
             { title: " Valeur Total du Stock", value: "22 500 fcfa", color: "commercial" },
             { title: "Clients Blacklistés", value: "2", color: "destructive" },
-            { title: "Catégories de produits", value: "7", color: "gray" },
-            { title: "Total facture confirmée", value: "2 500 000 fcfa", color: "warning" },
         ];
 
         const performanceData = [
             { title: "Stock faible", value: "5", unit: "Articles", color: "finance" },
             { title: "non assigné", value: "1", unit: "Dévis", color: "destructive" },
-            { title: "non converti", value: "2", unit: "Proformas", color: "purple" },
-            { title: "non confirmé", value: "1", unit: "Facture", color: "warning" }
         ];
         return { metrics, performanceData };
     }, []);

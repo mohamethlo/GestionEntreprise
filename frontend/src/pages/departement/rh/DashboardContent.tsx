@@ -26,13 +26,10 @@ const DashboardContent = () => {
             { title: "Zones de travail", value: "2", color: "warning" },
             { title: "Nouvelles Embauches (Mois)", value: "4", color: "success" },
             { title: "CV non traités", value: "3", color: "destructive" },
+      
         ];
 
         const performanceData = [
-            { title: "Présent", value: "22", unit: "employés", color: "commercial" },
-            { title: "Absent", value: "2", unit: "employés", color: "destructive" },
-            { title: "Pourcentage de présence", value: "91.6%", unit: "Sur 100%", color: "success" },
-            { title: "Rétard", value: "5", unit: "employés", color: "warning" }
         ];
         return { metrics, performanceData };
     }, []);
@@ -105,7 +102,7 @@ const DashboardContent = () => {
                         <div className="flex items-center gap-2 mb-4">
                             <FileSearch className="h-5 w-5 text-warning transition-transform duration-300 hover:scale-110" />
                             <h2 className="text-lg font-semibold transition-colors duration-300 hover:text-warning/80" style={{color:"black", fontSize:"25px"}}>
-                                Pointage du jour
+                                Indicateurs Clés RH
                             </h2>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
@@ -147,7 +144,7 @@ const DashboardContent = () => {
 
                 {/* Right Columns - Metrics Grid */}
                 <div className="lg:col-span-2">
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                         {metrics.map((metric, index) => (
                             <Card 
                                 key={index} 
@@ -181,6 +178,101 @@ const DashboardContent = () => {
                 </div>
             </div>
 
+            {/* Action Cards Section */}
+            <div 
+                className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 transition-all duration-700 delay-500 ${
+                    isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+                }`}
+            >
+                <Card 
+                    className="cursor-pointer border-0 bg-gradient-to-br from-blue-50 to-blue-100 transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:-translate-y-2 group"
+                    onClick={() => handleQuickAction('Recrutement')}
+                >
+                    <CardContent className="p-6">
+                        <div className="flex flex-col items-center text-center space-y-3">
+                            <div className="p-3 bg-blue-500 rounded-full transition-all duration-300 group-hover:scale-110 group-hover:rotate-12">
+                                <Users className="h-6 w-6 text-white" />
+                            </div>
+                            <div className="text-3xl font-bold text-blue-600 transition-all duration-300 group-hover:scale-110">
+                                24
+                            </div>
+                            <div className="text-sm font-semibold text-blue-800">
+                                Employés
+                            </div>
+                            <div className="text-xs text-blue-600 opacity-75 group-hover:opacity-100 transition-opacity">
+                                Actifs
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card 
+                    className="cursor-pointer border-0 bg-gradient-to-br from-green-50 to-green-100 transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:-translate-y-2 group"
+                    onClick={() => handleQuickAction('Formations')}
+                >
+                    <CardContent className="p-6">
+                        <div className="flex flex-col items-center text-center space-y-3">
+                            <div className="p-3 bg-green-500 rounded-full transition-all duration-300 group-hover:scale-110 group-hover:rotate-12">
+                                <FileSearch className="h-6 w-6 text-white" />
+                            </div>
+                            <div className="text-3xl font-bold text-green-600 transition-all duration-300 group-hover:scale-110">
+                                22
+                            </div>
+                            <div className="text-sm font-semibold text-green-800">
+                                Employés
+                            </div>
+                            <div className="text-xs text-green-600 opacity-75 group-hover:opacity-100 transition-opacity">
+                                présent
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card 
+                    className="cursor-pointer border-0 bg-gradient-to-br from-purple-50 to-purple-100 transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:-translate-y-2 group"
+                    onClick={() => handleQuickAction('Evaluations')}
+                >
+                    <CardContent className="p-6">
+                        <div className="flex flex-col items-center text-center space-y-3">
+                            <div className="p-3 bg-purple-500 rounded-full transition-all duration-300 group-hover:scale-110 group-hover:rotate-12">
+                                <CheckCircle2 className="h-6 w-6 text-white" />
+                            </div>
+                            <div className="text-3xl font-bold text-purple-600 transition-all duration-300 group-hover:scale-110">
+                                5
+                            </div>
+                            <div className="text-sm font-semibold text-purple-800">
+                                Employés
+                            </div>
+                            <div className="text-xs text-purple-600 opacity-75 group-hover:opacity-100 transition-opacity">
+                                en retard
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card 
+                    className="cursor-pointer border-0 bg-gradient-to-br from-orange-50 to-orange-100 transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:-translate-y-2 group"
+                    onClick={() => handleQuickAction('Documents')}
+                >
+                    <CardContent className="p-6">
+                        <div className="flex flex-col items-center text-center space-y-3">
+                            <div className="p-3 bg-orange-500 rounded-full transition-all duration-300 group-hover:scale-110 group-hover:rotate-12">
+                                <Clock className="h-6 w-6 text-white" />
+                            </div>
+                            <div className="text-3xl font-bold text-orange-600 transition-all duration-300 group-hover:scale-110">
+                                2
+                            </div>
+                            <div className="text-sm font-semibold text-orange-800">
+                                Employés
+                            </div>
+                            <div className="text-xs text-orange-600 opacity-75 group-hover:opacity-100 transition-opacity">
+                                Absent
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
             {/* Bottom Section - Tasks */}
             <Card 
                 className={`border-primary/20 transition-all duration-700 delay-300 ${
@@ -199,7 +291,7 @@ const DashboardContent = () => {
                             <div className="flex items-center gap-3">
                                 <AlertCircle className="h-4 w-4 text-warning transition-transform duration-300 group-hover:scale-110 group-hover:animate-pulse" />
                                 <span className="text-sm transition-all duration-300 group-hover:font-medium">
-                                    2 contrats arrivent à échéance cette semaine
+                                    3 contrats arrivent à échéance cette semaine
                                 </span>
                             </div>
                             <Button 
@@ -215,7 +307,7 @@ const DashboardContent = () => {
                             <div className="flex items-center gap-3">
                                 <Clock className="h-4 w-4 text-purple-400 transition-transform duration-300 group-hover:scale-110 group-hover:animate-spin" style={{ animationDuration: '2s' }} />
                                 <span className="text-sm transition-all duration-300 group-hover:font-medium">
-                                    3 demandes de congés en attente de validation
+                                    5 demandes de congés en attente de validation
                                 </span>
                             </div>
                             <Button 
