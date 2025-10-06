@@ -6,9 +6,13 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from extensions import db, mail
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
+from flask_migrate import Migrate  # ← AJOUTEZ CETTE LIGNE POUR LA GESTION DOCUMENTS
 
 # Chargement des variables d'environnement
 load_dotenv()
+
+# Initialisez Migrate
+migrate = Migrate()  # ← AJOUTEZ CETTE LIGNE POUR LA GESTION DOCUMENTS
 
 
 def create_app():
@@ -20,7 +24,7 @@ def create_app():
     app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
     # --- CONFIG API ---
-    CORS(app, resources={r"/api/*": {"origins": "*"}})  # Autoriser les appels depuis React
+    CORS(app, resources={r"/api/*": {"origins": "*"}})
     app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "jwt_dev_secret")
     JWTManager(app)
 
@@ -45,17 +49,18 @@ def create_app():
     # --- Init extensions ---
     db.init_app(app)
     mail.init_app(app)
+    migrate.init_app(app, db)  # ← AJOUTEZ CETTE LIGNE POUR LA GESTION DOCUMENTS
 
     # --- Enregistrement Blueprints ---
     from auth import auth_bp
     from routes import register_blueprints
 
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
-    register_blueprints(app)  # tous les autres blueprints (users, roles, billing, etc.)
+    register_blueprints(app)
 
     # --- Initialisation DB ---
     with app.app_context():
-        import models  # pour que SQLAlchemy connaisse les tables
+        import models
         db.create_all()
         seed_data()
 
@@ -63,11 +68,10 @@ def create_app():
 
 
 def seed_data():
-    """Insère les rôles et l’utilisateur admin par défaut si non existants"""
+    """Insère les rôles et l'utilisateur admin par défaut si non existants"""
     from models import User, Role
     from werkzeug.security import generate_password_hash
 
-    # Création des rôles
     if not Role.query.first():
         roles = [
             Role(name='Administrateur', permissions='all'),
@@ -80,7 +84,6 @@ def seed_data():
         db.session.commit()
         logging.info("✅ Rôles créés avec succès")
 
-    # Création admin
     if not User.query.filter_by(email='admin@entreprise.fr').first():
         admin_role = Role.query.filter_by(name='Administrateur').first()
         admin_user = User(

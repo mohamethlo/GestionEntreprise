@@ -13,22 +13,21 @@ from .products import products_bp
 from .devis import devis_bp
 from .inventory import inventory_bp
 from .expenses import expenses_bp
-from routes.leaves import leaves_bp
-from routes.candidatures import candidatures_bp
+from .leaves import leaves_bp
+from .candidatures import candidatures_bp
+from .rh_documents import rh_documents_bp  # ← AJOUTER CETTE LIGNE
 
 
 def register_blueprints(app: Flask):
     """Enregistre tous les blueprints du projet"""
-     # IMPORTANT : Désactiver strict_slashes AVANT d'enregistrer les blueprints
+    # IMPORTANT : Désactiver strict_slashes AVANT d'enregistrer les blueprints
     app.url_map.strict_slashes = False
-
 
     # Blueprints utilisateurs et rôles
     app.register_blueprint(users_bp, url_prefix="/api/users")
     app.register_blueprint(roles_bp, url_prefix="/api/roles")
     app.register_blueprint(client_bp, url_prefix="/api/clients")
     app.register_blueprint(intervention_bp, url_prefix="/api/interventions")
-
     app.register_blueprint(attendance_bp, url_prefix="/api/attendance")
     app.register_blueprint(work_locations_bp, url_prefix="/api/work_locations")
     app.register_blueprint(salary_advances_bp, url_prefix="/api/salary_advances")
@@ -38,3 +37,4 @@ def register_blueprints(app: Flask):
     app.register_blueprint(expenses_bp, url_prefix="/api/expenses")
     app.register_blueprint(leaves_bp, url_prefix="/api/leaves")
     app.register_blueprint(candidatures_bp, url_prefix="/api/candidatures")
+    app.register_blueprint(rh_documents_bp, url_prefix="/api/rh-documents") 
