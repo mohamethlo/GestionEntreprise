@@ -26,17 +26,10 @@ const DashboardContent = () => {
             { title: "Retards du Mois", value: "12", color: "warning" },
             { title: "Nouvelles Embauches (Mois)", value: "4", color: "success" },
             { title: "Taux de Turnover", value: "5.2%", color: "destructive" },
-            { title: "Évaluations en Attente", value: "23", color: "warning" },
-            { title: "Documents à Signer", value: "3", color: "purple" },
-            { title: "Moyenne d'Ancienneté", value: "3.2 ans", color: "commercial" },
-            { title: "Taux d'Augmentation", value: "4.5%", color: "success" }
+      
         ];
 
         const performanceData = [
-            { title: "Effectif Total", value: "124", unit: "employés", color: "commercial" },
-            { title: "Taux de Turnover", value: "5.2%", unit: "(objectif < 8%)", color: "destructive" },
-            { title: "Taux de Rétention", value: "94.8%", unit: "(objectif > 90%)", color: "success" },
-            { title: "Temps de Recrutement", value: "28", unit: "jours", color: "warning" }
         ];
         return { metrics, performanceData };
     }, []);
@@ -183,6 +176,101 @@ const DashboardContent = () => {
                         ))}
                     </div>
                 </div>
+            </div>
+
+            {/* Action Cards Section */}
+            <div 
+                className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 transition-all duration-700 delay-500 ${
+                    isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+                }`}
+            >
+                <Card 
+                    className="cursor-pointer border-0 bg-gradient-to-br from-blue-50 to-blue-100 transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:-translate-y-2 group"
+                    onClick={() => handleQuickAction('Recrutement')}
+                >
+                    <CardContent className="p-6">
+                        <div className="flex flex-col items-center text-center space-y-3">
+                            <div className="p-3 bg-blue-500 rounded-full transition-all duration-300 group-hover:scale-110 group-hover:rotate-12">
+                                <Users className="h-6 w-6 text-white" />
+                            </div>
+                            <div className="text-3xl font-bold text-blue-600 transition-all duration-300 group-hover:scale-110">
+                                23
+                            </div>
+                            <div className="text-sm font-semibold text-blue-800">
+                                Candidatures
+                            </div>
+                            <div className="text-xs text-blue-600 opacity-75 group-hover:opacity-100 transition-opacity">
+                                En cours d'évaluation
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card 
+                    className="cursor-pointer border-0 bg-gradient-to-br from-green-50 to-green-100 transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:-translate-y-2 group"
+                    onClick={() => handleQuickAction('Formations')}
+                >
+                    <CardContent className="p-6">
+                        <div className="flex flex-col items-center text-center space-y-3">
+                            <div className="p-3 bg-green-500 rounded-full transition-all duration-300 group-hover:scale-110 group-hover:rotate-12">
+                                <FileSearch className="h-6 w-6 text-white" />
+                            </div>
+                            <div className="text-3xl font-bold text-green-600 transition-all duration-300 group-hover:scale-110">
+                                87%
+                            </div>
+                            <div className="text-sm font-semibold text-green-800">
+                                Taux de Participation
+                            </div>
+                            <div className="text-xs text-green-600 opacity-75 group-hover:opacity-100 transition-opacity">
+                                Formations 2024
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card 
+                    className="cursor-pointer border-0 bg-gradient-to-br from-purple-50 to-purple-100 transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:-translate-y-2 group"
+                    onClick={() => handleQuickAction('Evaluations')}
+                >
+                    <CardContent className="p-6">
+                        <div className="flex flex-col items-center text-center space-y-3">
+                            <div className="p-3 bg-purple-500 rounded-full transition-all duration-300 group-hover:scale-110 group-hover:rotate-12">
+                                <CheckCircle2 className="h-6 w-6 text-white" />
+                            </div>
+                            <div className="text-3xl font-bold text-purple-600 transition-all duration-300 group-hover:scale-110">
+                                42
+                            </div>
+                            <div className="text-sm font-semibold text-purple-800">
+                                Évaluations
+                            </div>
+                            <div className="text-xs text-purple-600 opacity-75 group-hover:opacity-100 transition-opacity">
+                                Planifiées ce mois
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card 
+                    className="cursor-pointer border-0 bg-gradient-to-br from-orange-50 to-orange-100 transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:-translate-y-2 group"
+                    onClick={() => handleQuickAction('Documents')}
+                >
+                    <CardContent className="p-6">
+                        <div className="flex flex-col items-center text-center space-y-3">
+                            <div className="p-3 bg-orange-500 rounded-full transition-all duration-300 group-hover:scale-110 group-hover:rotate-12">
+                                <Clock className="h-6 w-6 text-white" />
+                            </div>
+                            <div className="text-3xl font-bold text-orange-600 transition-all duration-300 group-hover:scale-110">
+                                156
+                            </div>
+                            <div className="text-sm font-semibold text-orange-800">
+                                Documents RH
+                            </div>
+                            <div className="text-xs text-orange-600 opacity-75 group-hover:opacity-100 transition-opacity">
+                                Archivés en 2024
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
 
             {/* Bottom Section - Tasks */}

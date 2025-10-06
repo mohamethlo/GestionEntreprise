@@ -33,8 +33,15 @@ class Attendance(db.Model):
     work_location_id = db.Column(db.Integer, db.ForeignKey('work_location.id'))
     status = db.Column(db.String(20), default='present')  # present, absent, late
     notes = db.Column(db.Text)
+    
+    # Champs ajoutés
+    has_justification = db.Column(db.Boolean, default=False)
+    is_late = db.Column(db.Boolean, default=False)
 
     work_location = db.relationship('WorkLocation', backref='attendances')
+    
+    # CORRECTION : Ajout de la relation avec Justification
+    justifications = db.relationship('Justification', backref='attendance', lazy=True, cascade='all, delete-orphan')
 
     @property
     def total_hours(self):
@@ -43,5 +50,17 @@ class Attendance(db.Model):
         return 0
 
     def __repr__(self):
-        # user relationship is available via backref from User model
         return f'<Attendance {self.user_id} - {self.date}>'
+
+    # Méthode utilitaire pour ajouter une justification
+    def add_justification(self, commentaire, user_id):
+        from models.justification import Justification
+        justification = Justification(
+            user_id=user_id,
+            attendance_id=self.id,
+            commentaire=commentaire,
+            statut='en_attente'
+        )
+        db.session.add(justification)
+        self.has_justification = True
+        return justification
