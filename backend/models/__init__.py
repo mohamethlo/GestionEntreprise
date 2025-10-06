@@ -13,3 +13,4 @@ from .message import Message, Notification
 from .calendar_event import CalendarEvent
 from .misc import Approvisionnement, Installation, QuoteRequest, Devis, Reminder
 from .leaves import Leave
+from .candidatures import Candidature

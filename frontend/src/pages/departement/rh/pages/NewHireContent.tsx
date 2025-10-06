@@ -1,279 +1,408 @@
-// src/components/rh/pages/NewHireContent.jsx
-
-import React from 'react';
+import React, { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { UserPlus, FormInput, Truck, FileSignature, CheckCircle2, Calendar, Mail, Download, Clock, AlertCircle, ChevronRight } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  UserPlus,
+  FileText,
+  Edit,
+  Trash2,
+  Download,
+  Loader2,
+  Filter,
+  Search
+} from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import Swal from "sweetalert2";
+import "sweetalert2/dist/sweetalert2.min.css";
+import axios from "axios";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
+
+// Configuration API
+const API_BASE_URL = "http://localhost:5000";
+const AUTH_TOKEN_KEY = 'authToken';
+const useAuthToken = () => localStorage.getItem(AUTH_TOKEN_KEY);
+
+interface Candidature {
+  id: number;
+  nom: string;
+  poste: string;
+  domaine: string;
+  email: string;
+  telephone: string;
+  fichier_nom: string;
+  fichier_path: string;
+  date_depot: string;
+  status: 'nouveau' | 'en_cours' | 'accepte' | 'refuse';
+  user_id: string;
+}
+
+interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  message?: string;
+}
+
+interface Stats {
+  total: number;
+  par_domaine: Record<string, number>;
+  par_status: Record<string, number>;
+}
 
 const NewHireContent = () => {
-    // Données de simulation
-    const onboardingSteps = [
-        { 
-            step: "Fiche d'Information Remplie", 
-            status: "Terminé", 
-            icon: CheckCircle2, 
-            color: "text-green-600",
-            bgColor: "bg-green-100",
-            date: "15/12/2024"
-        },
-        { 
-            step: "Création du Compte Informatique", 
-            status: "En Cours", 
-            icon: Clock, 
-            color: "text-orange-600",
-            bgColor: "bg-orange-100",
-            date: "En cours"
-        },
-        { 
-            step: "Signature du Contrat", 
-            status: "En Attente", 
-            icon: FileSignature, 
-            color: "text-red-600",
-            bgColor: "bg-red-100",
-            date: "20/12/2024"
-        },
-        { 
-            step: "Configuration du Poste", 
-            status: "À venir", 
-            icon: Truck, 
-            color: "text-gray-600",
-            bgColor: "bg-gray-100",
-            date: "22/12/2024"
-        },
-    ];
+  const token = useAuthToken();
+  const [candidatures, setCandidatures] = useState<Candidature[]>([]);
+  const [filteredCandidatures, setFilteredCandidatures] = useState<Candidature[]>([]);
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [open, setOpen] = useState(false);
+  const [currentCandidatureId, setCurrentCandidatureId] = useState<number | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [filtreDomaine, setFiltreDomaine] = useState("Tous");
+  const [filtreStatus, setFiltreStatus] = useState("Tous");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-    const upcomingHires = [
-        { 
-            name: "Jean Dubois", 
-            startDate: "01/01/2025", 
-            position: "Développeur Fullstack", 
-            department: "IT",
-            progress: 75 
-        },
-        { 
-            name: "Marie Lambert", 
-            startDate: "08/01/2025", 
-            position: "Chef de Projet", 
-            department: "Marketing",
-            progress: 40 
-        },
-        { 
-            name: "Thomas Schmidt", 
-            startDate: "15/01/2025", 
-            position: "Analyste RH", 
-            department: "Ressources Humaines",
-            progress: 20 
-        },
-    ];
+  const [formData, setFormData] = useState({
+    nom: "",
+    poste: "",
+    domaine: "",
+    email: "",
+    telephone: "",
+  });
 
-    return (
-        <div className="min-h-screen bg-white p-6">
-            {/* En-tête */}
-            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8">
-                <div className="flex items-center gap-3 mb-4 lg:mb-0">
-                    <div className="p-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl shadow-sm">
-                        <UserPlus className="h-6 w-6 text-white" />
-                    </div>
-                    <div>
-                        <h2 className="text-3xl font-bold text-gray-900">Processus de Nouvelle Embauche</h2>
-                        <p className="text-gray-600 mt-1">Gérez l'intégration de vos nouveaux collaborateurs</p>
-                    </div>
-                </div>
-                <div className="flex gap-3">
-                    <Button variant="outline" className="flex items-center gap-2">
-                        <Download className="h-4 w-4" />
-                        Exporter
-                    </Button>
-                    <Button className="flex items-center gap-2 bg-green-600 hover:bg-green-700">
-                        <FormInput className="h-4 w-4" />
-                        Nouvelle Embauche
-                    </Button>
-                </div>
-            </div>
+  const domaines = ["Informatique","Ressources Humaines","Marketing","Finance","Commercial","Autre"];
+  const statusOptions = ["nouveau","en_cours","accepte","refuse"];
 
-            {/* Carte principale d'action */}
-            <Card className="border-0 shadow-lg mb-8 bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-l-green-400">
-                <CardContent className="p-8">
-                    <div className="flex flex-col lg:flex-row justify-between items-center gap-6">
-                        <div>
-                            <h3 className="text-2xl font-bold text-gray-900 mb-2">Lancez un nouvel onboarding</h3>
-                            <p className="text-gray-600 max-w-2xl">
-                                Initiez le processus d'intégration pour un nouveau collaborateur. 
-                                Toutes les étapes seront planifiées automatiquement.
-                            </p>
-                        </div>
-                        <Button className="flex items-center gap-2 bg-green-600 hover:bg-green-700 px-6 py-3 h-auto text-lg">
-                            <FormInput className="h-5 w-5" />
-                            Démarrer le Formulaire
-                            <ChevronRight className="h-4 w-4" />
-                        </Button>
-                    </div>
-                </CardContent>
-            </Card>
+  // ------------------- Fetch candidatures -------------------
+  const fetchCandidatures = useCallback(async () => {
+    try {
+      setLoading(true);
+      let url = `${API_BASE_URL}/api/candidatures/`;
+      const params: Record<string, string> = {};
+      if (filtreDomaine !== "Tous") params.domaine = filtreDomaine;
+      if (filtreStatus !== "Tous") params.status = filtreStatus;
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Suivi des nouvelles embauches */}
-                <Card className="border-0 shadow-lg">
-                    <CardHeader className="pb-4">
-                        <CardTitle className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-                            <Calendar className="h-5 w-5 text-blue-600" />
-                            Arrivées Imminentes
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                        {upcomingHires.map((hire, index) => (
-                            <div key={index} className="p-4 bg-gray-50 rounded-lg border border-gray-100 hover:bg-white transition-colors">
-                                <div className="flex justify-between items-start mb-3">
-                                    <div>
-                                        <h4 className="font-bold text-gray-900 text-lg">{hire.name}</h4>
-                                        <p className="text-gray-600">{hire.position}</p>
-                                        <div className="flex items-center gap-4 mt-1">
-                                            <span className="text-sm text-gray-500 flex items-center gap-1">
-                                                <Calendar className="h-3 w-3" />
-                                                Début: {hire.startDate}
-                                            </span>
-                                            <span className="text-sm text-gray-500">{hire.department}</span>
-                                        </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <span className="text-lg font-bold text-green-600">{hire.progress}%</span>
-                                        <p className="text-xs text-gray-500">complété</p>
-                                    </div>
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-2">
-                                    <div 
-                                        className="h-2 rounded-full bg-green-500 transition-all duration-500"
-                                        style={{ width: `${hire.progress}%` }}
-                                    ></div>
-                                </div>
-                            </div>
-                        ))}
-                    </CardContent>
-                </Card>
+      const response = await axios.get<ApiResponse<Candidature[]>>(url, {
+        headers: { Authorization: `Bearer ${token}` },
+        params
+      });
 
-                {/* Étapes d'onboarding détaillées */}
-                <Card className="border-0 shadow-lg">
-                    <CardHeader className="pb-4">
-                        <CardTitle className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-                            <CheckCircle2 className="h-5 w-5 text-green-600" />
-                            Progression de l'Onboarding
-                            <span className="text-sm font-normal text-gray-500 ml-2">• Jean Dubois</span>
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        {onboardingSteps.map((item, index) => (
-                            <div key={index} className="flex items-center gap-4 p-3 bg-white rounded-lg border border-gray-100 hover:shadow-sm transition-shadow">
-                                <div className={`p-2 rounded-lg ${item.bgColor}`}>
-                                    <item.icon className={`h-5 w-5 ${item.color}`} />
-                                </div>
-                                <div className="flex-1">
-                                    <p className="font-medium text-gray-900">{item.step}</p>
-                                    <div className="flex items-center gap-4 mt-1">
-                                        <span className={`text-sm font-medium ${item.color}`}>
-                                            {item.status}
-                                        </span>
-                                        <span className="text-xs text-gray-500">{item.date}</span>
-                                    </div>
-                                </div>
-                                {item.status === "Terminé" && (
-                                    <CheckCircle2 className="h-5 w-5 text-green-500" />
-                                )}
-                                {item.status === "En Cours" && (
-                                    <div className="animate-pulse">
-                                        <Clock className="h-5 w-5 text-orange-500" />
-                                    </div>
-                                )}
-                                {item.status === "En Attente" && (
-                                    <AlertCircle className="h-5 w-5 text-red-500" />
-                                )}
-                            </div>
-                        ))}
-                        
-                        <div className="pt-4 border-t border-gray-200">
-                            <div className="flex justify-between items-center">
-                                <span className="text-sm font-medium text-gray-700">Progression globale</span>
-                                <span className="text-lg font-bold text-green-600">50%</span>
-                            </div>
-                            <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                                <div className="h-2 rounded-full bg-gradient-to-r from-green-400 to-emerald-500 w-1/2"></div>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
+      if (response.data.success && response.data.data) {
+        const sorted = [...response.data.data].sort(
+          (a, b) => new Date(a.date_depot).getTime() - new Date(b.date_depot).getTime()
+        );
+        setCandidatures(sorted);
+        setFilteredCandidatures(sorted); // Initialiser les candidatures filtrées
+      }
+    } catch (error) {
+      console.error(error);
+      Swal.fire({ title:'Erreur', text:'Impossible de charger les candidatures', icon:'error' });
+    } finally { setLoading(false); }
+  }, [token, filtreDomaine, filtreStatus]);
 
-            {/* Outils d'intégration */}
-            <Card className="border-0 shadow-lg mt-8">
-                <CardHeader>
-                    <CardTitle className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-                        <Truck className="h-5 w-5 text-purple-600" />
-                        Outils d'Aide à l'Intégration
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <Button variant="outline" className="p-4 h-auto flex flex-col items-center gap-3 border-gray-200 hover:bg-gray-50 group">
-                            <div className="p-3 bg-blue-100 rounded-lg group-hover:bg-blue-200 transition-colors">
-                                <CheckCircle2 className="h-6 w-6 text-blue-600" />
-                            </div>
-                            <div className="text-center">
-                                <p className="font-medium text-gray-900">Checklist Onboarding</p>
-                                <p className="text-sm text-gray-600 mt-1">Liste de contrôle complète</p>
-                            </div>
-                        </Button>
-                        
-                        <Button variant="outline" className="p-4 h-auto flex flex-col items-center gap-3 border-gray-200 hover:bg-gray-50 group">
-                            <div className="p-3 bg-green-100 rounded-lg group-hover:bg-green-200 transition-colors">
-                                <Mail className="h-6 w-6 text-green-600" />
-                            </div>
-                            <div className="text-center">
-                                <p className="font-medium text-gray-900">Welcome Pack</p>
-                                <p className="text-sm text-gray-600 mt-1">Envoyer le kit de bienvenue</p>
-                            </div>
-                        </Button>
-                        
-                        <Button variant="outline" className="p-4 h-auto flex flex-col items-center gap-3 border-gray-200 hover:bg-gray-50 group">
-                            <div className="p-3 bg-purple-100 rounded-lg group-hover:bg-purple-200 transition-colors">
-                                <FileSignature className="h-6 w-6 text-purple-600" />
-                            </div>
-                            <div className="text-center">
-                                <p className="font-medium text-gray-900">Documents Types</p>
-                                <p className="text-sm text-gray-600 mt-1">Modèles de contrats</p>
-                            </div>
-                        </Button>
-                    </div>
-                </CardContent>
-            </Card>
+  // ------------------- Fetch stats -------------------
+  const fetchStats = useCallback(async () => {
+    try {
+      const response = await axios.get<ApiResponse<Stats>>(`${API_BASE_URL}/api/candidatures/stats`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.data.success && response.data.data) setStats(response.data.data);
+    } catch (error) { console.error(error); }
+  }, [token]);
 
-            {/* Statistiques rapides */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-8">
-                <Card className="border-0 shadow-sm bg-blue-50">
-                    <CardContent className="p-4 text-center">
-                        <div className="text-2xl font-bold text-blue-600">12</div>
-                        <div className="text-sm text-gray-600">Embauches ce mois</div>
-                    </CardContent>
-                </Card>
-                <Card className="border-0 shadow-sm bg-green-50">
-                    <CardContent className="p-4 text-center">
-                        <div className="text-2xl font-bold text-green-600">8</div>
-                        <div className="text-sm text-gray-600">Onboardings en cours</div>
-                    </CardContent>
-                </Card>
-                <Card className="border-0 shadow-sm bg-orange-50">
-                    <CardContent className="p-4 text-center">
-                        <div className="text-2xl font-bold text-orange-600">3</div>
-                        <div className="text-sm text-gray-600">En attente</div>
-                    </CardContent>
-                </Card>
-                <Card className="border-0 shadow-sm bg-purple-50">
-                    <CardContent className="p-4 text-center">
-                        <div className="text-2xl font-bold text-purple-600">94%</div>
-                        <div className="text-sm text-gray-600">Taux de réussite</div>
-                    </CardContent>
-                </Card>
-            </div>
+  useEffect(() => { 
+    fetchCandidatures(); 
+    fetchStats(); 
+  }, [fetchCandidatures, fetchStats]);
+
+  // ------------------- Filtrage par nom -------------------
+  useEffect(() => {
+    if (searchTerm.trim() === "") {
+      setFilteredCandidatures(candidatures);
+    } else {
+      const filtered = candidatures.filter(candidature =>
+        candidature.nom.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      setFilteredCandidatures(filtered);
+    }
+  }, [searchTerm, candidatures]);
+
+  // ------------------- Modal gestion -------------------
+  const handleOpen = (candidature: Candidature | null = null) => {
+    if(candidature) {
+      setFormData({
+        nom: candidature.nom,
+        poste: candidature.poste,
+        domaine: candidature.domaine,
+        email: candidature.email,
+        telephone: candidature.telephone
+      });
+      setCurrentCandidatureId(candidature.id);
+    } else {
+      setFormData({nom:"",poste:"",domaine:"",email:"",telephone:""});
+      setSelectedFile(null);
+      setCurrentCandidatureId(null);
+    }
+    setOpen(true);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if(file && file.size <= 5*1024*1024) setSelectedFile(file);
+    else if(file) Swal.fire({title:'Erreur', text:'Le fichier ne doit pas dépasser 5MB', icon:'error'});
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      if(currentCandidatureId) {
+        // Modifier infos
+        await axios.put(`${API_BASE_URL}/api/candidatures/${currentCandidatureId}`, formData, {
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type':'application/json' }
+        });
+        Swal.fire({title:'Succès', text:'Candidature mise à jour', icon:'success'});
+      } else {
+        if(!selectedFile) { Swal.fire({title:'Erreur', text:'Veuillez sélectionner un CV', icon:'error'}); return; }
+        const formToSend = new FormData();
+        Object.entries(formData).forEach(([k,v])=>formToSend.append(k,v));
+        formToSend.append("fichier", selectedFile);
+        await axios.post(`${API_BASE_URL}/api/candidatures/`, formToSend, { headers:{ Authorization:`Bearer ${token}` } });
+        Swal.fire({title:'Succès', text:'Candidature créée', icon:'success'});
+      }
+      setOpen(false);
+      setFormData({nom:"",poste:"",domaine:"",email:"",telephone:""});
+      setSelectedFile(null);
+      setCurrentCandidatureId(null);
+      await fetchCandidatures();
+      await fetchStats();
+    } catch(error) {
+      console.error(error);
+      Swal.fire({title:'Erreur', text:'Erreur lors de la soumission', icon:'error'});
+    } finally { setIsSubmitting(false); }
+  };
+
+  // ------------------- Download -------------------
+  const handleDownload = async (id:number, nom:string) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/candidatures/${id}/download`, {
+        headers:{ Authorization:`Bearer ${token}` },
+        responseType:'blob'
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href=url; link.setAttribute('download',`${nom}_CV.pdf`);
+      document.body.appendChild(link); link.click(); link.remove();
+    } catch(error) { console.error(error); Swal.fire({title:'Erreur', text:'Impossible de télécharger le CV', icon:'error'}); }
+  };
+
+  // ------------------- Delete -------------------
+  const handleDelete = async (id:number) => {
+    const result = await Swal.fire({title:'Êtes-vous sûr?', text:"Vous ne pourrez pas revenir en arrière!", icon:'warning', showCancelButton:true, confirmButtonText:'Oui, supprimer!', cancelButtonText:'Annuler'});
+    if(result.isConfirmed){
+      try {
+        await axios.delete(`${API_BASE_URL}/api/candidatures/${id}`, { headers:{ Authorization:`Bearer ${token}` } });
+        Swal.fire('Supprimé!','Candidature supprimée','success'); 
+        await fetchCandidatures(); await fetchStats();
+      } catch(error){ console.error(error); Swal.fire({title:'Erreur', text:'Erreur suppression', icon:'error'}); }
+    }
+  };
+
+  // ------------------- Update status -------------------
+  const handleStatusChange = async (id:number, newStatus:string) => {
+    try {
+      await axios.put(`${API_BASE_URL}/api/candidatures/${id}/status`, { status: newStatus }, { headers:{ Authorization:`Bearer ${token}` } });
+      setCandidatures(prev => prev.map(c => c.id===id ? {...c,status:newStatus} : c));
+      await fetchStats();
+      Swal.fire({title:'Succès', text:`Statut changé en ${newStatus}`, icon:'success'});
+    } catch(error){ console.error(error); Swal.fire({title:'Erreur', text:'Impossible de changer le statut', icon:'error'});}
+  };
+
+  const formatDate = (dateString:string) => format(new Date(dateString), 'PPP à HH:mm', {locale:fr});
+  const getStatusBadge = (status:string) => {
+    switch(status){
+      case 'nouveau': return <Badge className="bg-blue-500">Nouveau</Badge>;
+      case 'en_cours': return <Badge className="bg-yellow-500">En cours</Badge>;
+      case 'accepte': return <Badge className="bg-green-500">Accepté</Badge>;
+      case 'refuse': return <Badge variant="destructive">Refusé</Badge>;
+      default: return <Badge variant="outline">Inconnu</Badge>;
+    }
+  }
+
+  return (
+    <div className="container mx-auto py-6">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-2xl font-bold">Gestion des Candidatures</h1>
+          <p className="text-gray-600 mt-1">Ajoutez et gérez les CV reçus par domaine et statut</p>
         </div>
-    );
+        <Button onClick={()=>handleOpen()}><UserPlus className="mr-2 h-4 w-4"/>Nouvelle Candidature</Button>
+      </div>
+
+      {/* Filtres */}
+      <div className="flex gap-4 mb-6 items-center">
+        <Filter className="h-5 w-5 text-gray-500"/>
+        <div className="relative w-64">
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
+          <Input
+            placeholder="Rechercher par nom..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-8"
+          />
+        </div>
+        <Select value={filtreDomaine} onValueChange={setFiltreDomaine}>
+          <SelectTrigger className="w-64"><SelectValue placeholder="Filtrer par domaine"/></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="Tous">Tous les domaines</SelectItem>
+            {domaines.map(d=><SelectItem key={d} value={d}>{d}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={filtreStatus} onValueChange={setFiltreStatus}>
+          <SelectTrigger className="w-64"><SelectValue placeholder="Filtrer par statut"/></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="Tous">Tous les statuts</SelectItem>
+            {statusOptions.map(s=><SelectItem key={s} value={s}>{s}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Table */}
+      <Card>
+        <CardHeader><CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5"/>Liste des Candidatures ({filteredCandidatures.length})</CardTitle></CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary"/></div>
+          ) : filteredCandidatures.length===0 ? (
+            <div className="text-center py-12">
+              <FileText className="mx-auto h-12 w-12 text-gray-400"/>
+              <h3 className="mt-2 text-sm font-medium text-gray-900">Aucune candidature</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                {candidatures.length === 0 ? "Commencez par créer une candidature." : "Aucune candidature ne correspond à vos critères de recherche."}
+              </p>
+              {candidatures.length === 0 && (
+                <div className="mt-6"><Button onClick={()=>handleOpen()}><UserPlus className="mr-2 h-4 w-4"/>Nouvelle Candidature</Button></div>
+              )}
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nom</TableHead>
+                    <TableHead>Poste</TableHead>
+                    <TableHead>Domaine</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Téléphone</TableHead>
+                    <TableHead>Statut</TableHead>
+                    <TableHead>Date de dépôt</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredCandidatures.map(c=>(
+                    <TableRow key={c.id}>
+                      <TableCell className="font-medium">{c.nom}</TableCell>
+                      <TableCell>{c.poste}</TableCell>
+                      <TableCell>{c.domaine}</TableCell>
+                      <TableCell>{c.email}</TableCell>
+                      <TableCell>{c.telephone}</TableCell>
+                      <TableCell>{getStatusBadge(c.status)}</TableCell>
+                      <TableCell>{formatDate(c.date_depot)}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2 items-center">
+                          <Button variant="ghost" size="icon" onClick={()=>handleDownload(c.id, c.nom)} title="Télécharger CV">
+                            <Download className="h-4 w-4"/>
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={()=>handleOpen(c)} title="Modifier">
+                            <Edit className="h-4 w-4"/>
+                          </Button>
+                          <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={()=>handleDelete(c.id)} title="Supprimer">
+                            <Trash2 className="h-4 w-4"/>
+                          </Button>
+                          <Select value={c.status} onValueChange={(newStatus)=>handleStatusChange(c.id,newStatus)}>
+                            <SelectTrigger className="h-8 w-28">
+                              <SelectValue placeholder={c.status}/>
+                            </SelectTrigger>
+                            <SelectContent>
+                              {statusOptions.map(s=><SelectItem key={s} value={s}>{s}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Modal ajout/édition */}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>{currentCandidatureId?'Modifier la candidature':'Nouvelle candidature'}</DialogTitle>
+            <DialogDescription>{currentCandidatureId?'Modifiez les infos de la candidature':'Remplissez les infos et téléversez le CV'}</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit}>
+            <div className="grid gap-4 py-4">
+              {['nom','poste','domaine','email','telephone'].map((field,i)=>{
+                if(field==='domaine'){
+                  return (
+                    <div key={i} className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor={field} className="text-right">Domaine</Label>
+                      <Select value={formData.domaine} onValueChange={(val)=>setFormData({...formData,domaine:val})} required>
+                        <SelectTrigger className="col-span-3"><SelectValue placeholder="Choisir un domaine"/></SelectTrigger>
+                        <SelectContent>{domaines.map(d=><SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                  )
+                } else {
+                  return (
+                    <div key={i} className="grid grid-cols-4 items-center gap-4">
+                      <Label htmlFor={field} className="text-right">{field.charAt(0).toUpperCase()+field.slice(1)}</Label>
+                      <Input id={field} value={(formData as any)[field]} onChange={(e)=>setFormData({...formData,[field]:e.target.value})} className="col-span-3" required/>
+                    </div>
+                  )
+                }
+              })}
+              {!currentCandidatureId && (
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="fichier" className="text-right">CV</Label>
+                  <div className="col-span-3">
+                    <Input id="fichier" type="file" accept=".pdf,.doc,.docx" onChange={handleFileChange} required/>
+                    {selectedFile && <p className="text-xs text-gray-500 mt-1">Fichier: {selectedFile.name}</p>}
+                  </div>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={()=>setOpen(false)} disabled={isSubmitting}>Annuler</Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
+                {currentCandidatureId?'Mettre à jour':'Créer'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
 };
 
 export default NewHireContent;
