@@ -18,25 +18,21 @@ const DashboardContent = () => {
     // Les données originales du tableau de bord (isolées ici)
     const { metrics, performanceData } = useMemo(() => {
         const metrics = [
-            { title: "Employés Actifs", value: "124", color: "success" },
-            { title: "Congés en Cours", value: "18", color: "warning" },
-            { title: "Entretiens Aujourd'hui", value: "5", color: "purple" },
-            { title: "Contrats à Renouveler", value: "7", color: "destructive" },
-            { title: "Formations en Cours", value: "9", color: "commercial" },
-            { title: "Retards du Mois", value: "12", color: "warning" },
+            { title: "Employés Actifs", value: "24", color: "success" },
+            { title: "Congés en Cours", value: "0", color: "warning" },
+            { title: "Demandes de congés", value: "3", color: "purple" },
+            { title: "Contrats à Renouveler", value: "2", color: "destructive" },
+            { title: "Avances Salaire", value: "1", color: "commercial" },
+            { title: "Zones de travail", value: "2", color: "warning" },
             { title: "Nouvelles Embauches (Mois)", value: "4", color: "success" },
-            { title: "Taux de Turnover", value: "5.2%", color: "destructive" },
-            { title: "Évaluations en Attente", value: "23", color: "warning" },
-            { title: "Documents à Signer", value: "3", color: "purple" },
-            { title: "Moyenne d'Ancienneté", value: "3.2 ans", color: "commercial" },
-            { title: "Taux d'Augmentation", value: "4.5%", color: "success" }
+            { title: "CV non traités", value: "3", color: "destructive" },
         ];
 
         const performanceData = [
-            { title: "Effectif Total", value: "124", unit: "employés", color: "commercial" },
-            { title: "Taux de Turnover", value: "5.2%", unit: "(objectif < 8%)", color: "destructive" },
-            { title: "Taux de Rétention", value: "94.8%", unit: "(objectif > 90%)", color: "success" },
-            { title: "Temps de Recrutement", value: "28", unit: "jours", color: "warning" }
+            { title: "Présent", value: "22", unit: "employés", color: "commercial" },
+            { title: "Absent", value: "2", unit: "employés", color: "destructive" },
+            { title: "Pourcentage de présence", value: "91.6%", unit: "Sur 100%", color: "success" },
+            { title: "Rétard", value: "5", unit: "employés", color: "warning" }
         ];
         return { metrics, performanceData };
     }, []);
@@ -109,7 +105,7 @@ const DashboardContent = () => {
                         <div className="flex items-center gap-2 mb-4">
                             <FileSearch className="h-5 w-5 text-warning transition-transform duration-300 hover:scale-110" />
                             <h2 className="text-lg font-semibold transition-colors duration-300 hover:text-warning/80" style={{color:"black", fontSize:"25px"}}>
-                                Indicateurs Clés RH
+                                Pointage du jour
                             </h2>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
@@ -151,7 +147,7 @@ const DashboardContent = () => {
 
                 {/* Right Columns - Metrics Grid */}
                 <div className="lg:col-span-2">
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-2 gap-3">
                         {metrics.map((metric, index) => (
                             <Card 
                                 key={index} 
@@ -203,7 +199,7 @@ const DashboardContent = () => {
                             <div className="flex items-center gap-3">
                                 <AlertCircle className="h-4 w-4 text-warning transition-transform duration-300 group-hover:scale-110 group-hover:animate-pulse" />
                                 <span className="text-sm transition-all duration-300 group-hover:font-medium">
-                                    3 contrats arrivent à échéance cette semaine
+                                    2 contrats arrivent à échéance cette semaine
                                 </span>
                             </div>
                             <Button 
@@ -219,7 +215,7 @@ const DashboardContent = () => {
                             <div className="flex items-center gap-3">
                                 <Clock className="h-4 w-4 text-purple-400 transition-transform duration-300 group-hover:scale-110 group-hover:animate-spin" style={{ animationDuration: '2s' }} />
                                 <span className="text-sm transition-all duration-300 group-hover:font-medium">
-                                    5 demandes de congés en attente de validation
+                                    3 demandes de congés en attente de validation
                                 </span>
                             </div>
                             <Button 
@@ -236,7 +232,7 @@ const DashboardContent = () => {
             </Card>
 
             {/* Styles CSS pour les animations */}
-            <style jsx>{`
+            <style>{`
                 @keyframes fade-in-up {
                     from {
                         opacity: 0;

@@ -9,26 +9,22 @@ const DashboardContent = () => {
     // Les données originales du tableau de bord (isolées ici)
     const { metrics, performanceData } = useMemo(() => {
         const metrics = [
-            { title: "Chiffre d'Affaires (Mois)", value: "245,780", unit: "fcfa", color: "success" },
-            { title: "Dépenses (Mois)", value: "187,450", unit: "fcfa", color: "destructive" },
-            { title: "Bénéfice Brut", value: "58,330", unit: "fcfa", color: "success" },
-            { title: "Factures Impayées", value: "12", color: "warning" },
-            { title: "TVA à Déclarer", value: "32,450", unit: "fcfa", color: "purple" },
-            { title: "Déclaration Fiscale", value: "J-8", color: "destructive" },
-            { title: "Trésorerie", value: "1,245,600", unit: "fcfa", color: "success" },
-            { title: "Dettes Fournisseurs", value: "87,320", unit: "fcfa", color: "warning" },
-            { title: "Créances Clients", value: "145,600", unit: "fcfa", color: "purple" },
-            { title: "Marge Brute", value: "42%", color: "success" },
-            { title: "Rentabilité Nette", value: "18%", color: "success" },
-            { title: "Dernier Bilan", value: "Q2 2025", color: "commercial" }
+            { title: "Chiffre d'Affaires", value: "304 110 fcfa", unit: "fcfa", color: "success" },
+            { title: "Dépenses ", value: "229 900 fcfa", unit: "fcfa", color: "destructive" },
+            { title: "Bénéfice Brut", value: "574 210 fcfa", unit: "fcfa", color: "success" },
+            { title: "Factures Impayées", value: "3", color: "warning" },
+            { title: "TVA à Décaisser", value: "32 450 fcfa", unit: "fcfa", color: "purple" },
+            { title: "Pourcentage de bénéfices", value: "45%", color: "destructive" },
+            { title: "Trésorerie", value: "1 245 600 fcfa", unit: "fcfa", color: "success" },
+            { title: "Dettes Fournisseurs", value: "87 320", unit: "fcfa", color: "warning" },
         ];
         
 
         const performanceData = [
-            { title: "CA Mensuel", value: "245,780", unit: "fcfa", color: "success" },
-            { title: "Dépenses", value: "187,450", unit: "fcfa", color: "destructive" },
-            { title: "Bénéfice Net", value: "58,330", unit: "fcfa", color: "success" },
-            { title: "Marge Brute", value: "42%", unit: "(objectif 40%)", color: "warning" }
+            { title: "Approvisionnement", value: "245 780 fcfa", unit: "Dakar", color: "success" },
+            { title: "Dépenses", value: "187 450 fcfa", unit: "Dakar", color: "destructive" },
+            { title: "Approvisionnement", value: "58 330 fcfa", unit: "Mbour", color: "success" },
+            { title: "Depenses", value: "42 450 fcfa", unit: "Mbour", color: "warning" }
         ];
         return { metrics, performanceData };
     }, []);
@@ -41,12 +37,12 @@ const DashboardContent = () => {
                     <div>
                         <div className="flex items-center gap-2 mb-4">
                             <Users className="h-5 w-5 text-warning" />
-                            <h2 className="text-lg font-semibold" style={{color:"black", fontSize:"25px"}}>Gestion Administration en Temps Réel</h2>
+                            <h2 className="text-lg font-semibold" style={{color:"black", fontSize:"25px"}}>Gestion Comptable en Temps Réel</h2>
                         </div>
                         <div className="p-4 bg-success/10 border border-success/20 rounded-lg">
                             <div className="flex items-center gap-2 text-success">
                                 <CheckCircle2 className="h-4 w-4" />
-                                <span className="text-sm">Service RH actif et synchronisé</span>
+                                <span className="text-sm">Service Comptable actif et synchronisé</span>
                             </div>
                         </div>
                     </div>
@@ -54,7 +50,7 @@ const DashboardContent = () => {
                     <div>
                         <div className="flex items-center gap-2 mb-4">
                             <FileSearch className="h-5 w-5 text-warning" />
-                            <h2 className="text-lg font-semibold" style={{color:"black", fontSize:"25px"}}>Indicateurs Clés d'administration</h2>
+                            <h2 className="text-lg font-semibold" style={{color:"black", fontSize:"25px"}}>Indicateurs Clés Comptable ce mois</h2>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             {performanceData.map((item, index) => (
@@ -72,7 +68,7 @@ const DashboardContent = () => {
 
                 {/* Right Columns - Metrics Grid */}
                 <div className="lg:col-span-2">
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-2 gap-3">
                         {metrics.map((metric, index) => (
                             <Card key={index} className={`metric-card ${metric.color} border-0`}>
                                 <CardContent className="p-3">

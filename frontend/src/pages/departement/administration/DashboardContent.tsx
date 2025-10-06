@@ -9,25 +9,21 @@ const DashboardContent = () => {
     // Les données originales du tableau de bord (isolées ici)
     const { metrics, performanceData } = useMemo(() => {
         const metrics = [
-            { title: "Utilisateurs Actifs", value: "42", color: "success" },
-            { title: "Alertes de Sécurité", value: "3", color: "destructive" },
-            { title: "Sauvegardes du Jour", value: "2/3", color: "warning" },
-            { title: "Espace Disque Utilisé", value: "78%", color: "warning" },
-            { title: "Applications Installées", value: "15", color: "commercial" },
-            { title: "Mises à Jour en Retard", value: "5", color: "destructive" },
-            { title: "Tickets Ouverts", value: "7", color: "purple" },
-            { title: "Temps de Réponse Moyen", value: "2h24", color: "warning" },
-            { title: "SLA Actuel", value: "99.7%", color: "success" },
-            { title: "Audits du Mois", value: "3", color: "purple" },
-            { title: "Politiques à Mettre à Jour", value: "2", color: "destructive" },
-            { title: "Certifications Actives", value: "5", color: "success" }
+            { title: "Administrateurs", value: "1", color: "success" },
+            { title: "Techniciens", value: "2", color: "destructive" },
+            { title: "Commercial", value: "1", color: "warning" },
+            { title: "RH", value: "2", color: "warning" },
+            { title: "Comptable", value: "2", color: "commercial" },
+            { title: "Heure Pointage entrée", value: "9h15", color: "destructive" },
+            { title: "Heure Pointage sortie", value: "17h00", color: "destructive" },
+            { title: "Temps de pause", value: "1h", color: "warning" },
         ];
 
         const performanceData = [
-            { title: "Disponibilité Système", value: "99.9%", unit: "(objectif 99.9%)", color: "success" },
-            { title: "Temps de Réponse Moyen", value: "2h24", unit: "(objectif < 4h)", color: "warning" },
-            { title: "Sécurité", value: "98%", unit: "(objectif > 95%)", color: "success" },
-            { title: "Satisfaction Utilisateurs", value: "4.7/5", unit: "(objectif > 4.5)", color: "commercial" }
+            { title: "Actifs", value: "12", unit: "Utilisateur", color: "success" },
+            { title: "Crées", value: "5", unit: "Roles", color: "warning" },
+            { title: "Configurés", value: "15", unit: "Permissions", color: "success" },
+            { title: "Modifiés", value: "0", unit: "Paramètres", color: "commercial" }
         ];
         return { metrics, performanceData };
     }, []);
@@ -71,7 +67,7 @@ const DashboardContent = () => {
 
                 {/* Right Columns - Metrics Grid */}
                 <div className="lg:col-span-2">
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-2 gap-3">
                         {metrics.map((metric, index) => (
                             <Card key={index} className={`metric-card ${metric.color} border-0`}>
                                 <CardContent className="p-3">

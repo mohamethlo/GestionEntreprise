@@ -9,25 +9,21 @@ const DashboardContent = () => {
     // Les données originales du tableau de bord (isolées ici)
     const { metrics, performanceData } = useMemo(() => {
         const metrics = [
-            { title: "Interventions en Cours", value: "8", color: "warning" },
-            { title: "Interventions Planifiées", value: "12", color: "purple" },
+            { title: "Interventions en Cours", value: "0", color: "warning" },
+            { title: "Installation en cours", value: "0", color: "purple" },
             { title: "Techniciens Disponibles", value: "5/7", color: "success" },
-            { title: "Interventions en Retard", value: "2", color: "destructive" },
-            { title: "KM Moyens/Intervention", value: "24.5", unit: "km", color: "commercial" },
-            { title: "Temps Moyen d'Intervention", value: "2h15", color: "warning" },
-            { title: "Taux de Résolution", value: "94%", color: "success" },
+            { title: "Paiement en Retard", value: "2", color: "destructive" },
+            { title: "Total reliquats", value: "375 000 fcfa", unit: "fcfa", color: "commercial" },
+            { title: "Total installation", value: "700 000 fcfa", color: "warning" },
+            { title: "Temps Moyen d'Intervention", value: "45 minutes", color: "success" },
             { title: "Interventions Urgentes", value: "3", color: "destructive" },
-            { title: "Matériel en Stock", value: "87%", color: "success" },
-            { title: "Satisfaction Client", value: "4.8/5", color: "commercial" },
-            { title: "Contrats de Maintenance", value: "23", color: "purple" },
-            { title: "Prochain Contrôle", value: "J-14", color: "warning" }
         ];
 
         const performanceData = [
-            { title: "Interventions ce Mois", value: "42", unit: "(objectif 50)", color: "warning" },
-            { title: "Taux de Résolution", value: "94%", unit: "(objectif > 90%)", color: "success" },
-            { title: "Temps Moyen d'Intervention", value: "2h15", unit: "(objectif < 3h)", color: "success" },
-            { title: "Satisfaction Client", value: "4.8/5", unit: "(objectif > 4.5)", color: "commercial" }
+            { title: "Ce mois", value: "12", unit: "Interventions", color: "warning" },
+            { title: "Ce mois", value: "5", unit: "Installations", color: "success" },
+            { title: "Réalisé ce mois", value: "5", unit: "Intervention", color: "success" },
+            { title: "Réalisé ce mois", value: "2", unit: "Installations", color: "success" }
         ];
         return { metrics, performanceData };
     }, []);
@@ -71,7 +67,7 @@ const DashboardContent = () => {
 
                 {/* Right Columns - Metrics Grid */}
                 <div className="lg:col-span-2">
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-2 gap-3">
                         {metrics.map((metric, index) => (
                             <Card key={index} className={`metric-card ${metric.color} border-0`}>
                                 <CardContent className="p-3">
@@ -99,7 +95,7 @@ const DashboardContent = () => {
                     <div className="flex items-center justify-between p-3 bg-warning/10 rounded-lg border border-warning/20">
                         <div className="flex items-center gap-3">
                         <AlertCircle className="h-4 w-4 text-warning" />
-                        <span className="text-sm">3 Factures clients en retard de paiement</span>
+                        <span className="text-sm">2 retard de paiement</span>
                         </div>
                         <Button variant="outline" size="sm">Traiter</Button>
                     </div>

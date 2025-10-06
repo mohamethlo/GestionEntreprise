@@ -9,26 +9,21 @@ const DashboardContent = () => {
     // Les données originales du tableau de bord (isolées ici)
     const { metrics, performanceData } = useMemo(() => {
         const metrics = [
-            { title: "Factures Clients Dues", value: "14", color: "destructive" },
-            { title: "Paiements Fournisseur en Attente", value: "8", color: "warning" },
-            { title: "Notes de Frais à Approuver", value: "12", color: "purple" },
-            { title: "Total Dettes Clients", value: "18,500 fcfa", color: "finance" },
-            { title: "Total Créances Fournisseurs", value: "25,400 fcfa", color: "commercial" },
-            { title: "Clôture du Mois", value: "J-5", color: "destructive" },
-            { title: "Documents Fiscaux", value: "7", color: "gray" },
-            { title: "Suivi Budgétaire (Q3)", value: "95%", color: "warning" },
-            { title: "Amortissements en Cours", value: "18", color: "finance" },
-            { title: "Taux d'Erreur Saisie", value: "0.1%", color: "warning" },
-            { title: "Comptes Bancaires", value: "3", color: "commercial" },
-            { title: "Rapprochements à Faire", value: "1", color: "gray" },
-            { title: "Dernier Audit", value: "Ok", color: "finance" }
+            { title: "Total clients", value: "14", color: "destructive" },
+            { title: "Total produits", value: "50", color: "warning" },
+            { title: "Articles en Stock", value: "32", color: "purple" },
+            { title: "Devis Assigné", value: "2", color: "finance" },
+            { title: " Valeur Total du Stock", value: "22 500 fcfa", color: "commercial" },
+            { title: "Clients Blacklistés", value: "2", color: "destructive" },
+            { title: "Catégories de produits", value: "7", color: "gray" },
+            { title: "Total facture confirmée", value: "2 500 000 fcfa", color: "warning" },
         ];
 
         const performanceData = [
-            { title: "Revenus Nouveaux", value: "150,500", unit: "fcfa", color: "finance" },
-            { title: "Dépenses Totales", value: "45,200", unit: "fcfa", color: "destructive" },
-            { title: "Trésorerie Actuelle", value: "210,800", unit: "fcfa", color: "purple" },
-            { title: "Marge Brute", value: "68%", unit: "", color: "warning" }
+            { title: "Stock faible", value: "5", unit: "Articles", color: "finance" },
+            { title: "non assigné", value: "1", unit: "Dévis", color: "destructive" },
+            { title: "non converti", value: "2", unit: "Proformas", color: "purple" },
+            { title: "non confirmé", value: "1", unit: "Facture", color: "warning" }
         ];
         return { metrics, performanceData };
     }, []);
@@ -41,7 +36,7 @@ const DashboardContent = () => {
                     <div>
                         <div className="flex items-center gap-2 mb-4">
                             <Users className="h-5 w-5 text-warning" />
-                            <h2 className="text-lg font-semibold" style={{color:"black", fontSize:"25px"}}>Gestion Administration en Temps Réel</h2>
+                            <h2 className="text-lg font-semibold" style={{color:"black", fontSize:"25px"}}>Gestion Commercial en Temps Réel</h2>
                         </div>
                         <div className="p-4 bg-success/10 border border-success/20 rounded-lg">
                             <div className="flex items-center gap-2 text-success">
@@ -54,7 +49,7 @@ const DashboardContent = () => {
                     <div>
                         <div className="flex items-center gap-2 mb-4">
                             <FileSearch className="h-5 w-5 text-warning" />
-                            <h2 className="text-lg font-semibold" style={{color:"black", fontSize:"25px"}}>Indicateurs Clés d'administration</h2>
+                            <h2 className="text-lg font-semibold" style={{color:"black", fontSize:"25px"}}>Indicateurs Clés Commercial</h2>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             {performanceData.map((item, index) => (
@@ -72,7 +67,7 @@ const DashboardContent = () => {
 
                 {/* Right Columns - Metrics Grid */}
                 <div className="lg:col-span-2">
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-2 gap-3">
                         {metrics.map((metric, index) => (
                             <Card key={index} className={`metric-card ${metric.color} border-0`}>
                                 <CardContent className="p-3">
@@ -100,7 +95,7 @@ const DashboardContent = () => {
                     <div className="flex items-center justify-between p-3 bg-warning/10 rounded-lg border border-warning/20">
                         <div className="flex items-center gap-3">
                         <AlertCircle className="h-4 w-4 text-warning" />
-                        <span className="text-sm">3 Factures clients en retard de paiement</span>
+                        <span className="text-sm">5 Articles stock faible</span>
                         </div>
                         <Button variant="outline" size="sm">Traiter</Button>
                     </div>

@@ -10,6 +10,7 @@ export const NAV_ITEMS = [
   { key: "stock", label: "Stock", icon: Package },
   { key: "produit", label: "Produit", icon: PackagePlus },
   { key: "proformas", label: "Profomas", icon: FileSearch },
+  { key: "facture", label: "Facture", icon: FileText },
   { key: "blacklist", label: "Blacklist", icon: ShieldAlert },
 ];
 

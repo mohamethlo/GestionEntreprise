@@ -11,6 +11,7 @@ import StockContent from "./pages/StockContent";
 import ProductContent from "./pages/ProductContent";
 import ProformasContent from "./pages/ProformasContent";
 import BlacklistContent from "./pages/BlacklistContent";
+import FactureContent from "./pages/FactureContent";
 
 
 const CommercialDepartment = () => {
@@ -35,6 +36,8 @@ const CommercialDepartment = () => {
         return <ProformasContent />;
       case "blacklist":
         return <BlacklistContent />;
+      case "facture":
+        return <FactureContent />;
       default:
         return <DashboardContent />;
     }
