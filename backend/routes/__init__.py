@@ -11,6 +11,7 @@ from .work_locations import work_locations_bp
 from .salary_advances import salary_advances_bp
 from .products import products_bp
 from .inventory import inventory_bp
+from .employee import employee_bp
 
 
 def register_blueprints(app: Flask):
@@ -27,3 +28,4 @@ def register_blueprints(app: Flask):
     app.register_blueprint(salary_advances_bp, url_prefix="/api/salary_advances")
     app.register_blueprint(products_bp, url_prefix="/api/products")
     app.register_blueprint(inventory_bp, url_prefix="/api/inventory")
+    app.register_blueprint(employee_bp, url_prefix="/api/employees")
