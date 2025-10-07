@@ -12,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Folder, Upload, FileSignature, FileText, Download, Search, MoreVertical, Users, Calendar, Eye, Loader2, Plus, Trash2, ChevronRight, Home, BarChart3, Sparkles, Minus, TrendingUp, Info, Check } from "lucide-react";
 import Swal from "sweetalert2";
 import "sweetalert2/dist/sweetalert2.min.css";
-import axios from "axios";
+import apiClient from '@/api/axiosConfig';
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -93,7 +93,7 @@ const RhDocumentsContent = () => {
 
   const fetchFolders = useCallback(async () => {
     try {
-      const response = await axios.get<ApiResponse<RhFolder[]>>(`${API_BASE_URL}/api/rh-documents/folders`, { 
+      const response = await apiClient.get<ApiResponse<RhFolder[]>>(`${API_BASE_URL}/api/rh-documents/folders`, { 
         headers: { Authorization: `Bearer ${token}` } 
       });
       if (response.data.success && response.data.data) setFolders(response.data.data);
@@ -115,7 +115,7 @@ const RhDocumentsContent = () => {
       const url = folderId 
         ? `${API_BASE_URL}/api/rh-documents/documents?folder_id=${folderId}`
         : `${API_BASE_URL}/api/rh-documents/documents`;
-      const response = await axios.get<ApiResponse<RhDocument[]>>(url, { 
+      const response = await apiClient.get<ApiResponse<RhDocument[]>>(url, { 
         headers: { Authorization: `Bearer ${token}` } 
       });
       if (response.data.success && response.data.data) setDocuments(response.data.data);
@@ -134,7 +134,7 @@ const RhDocumentsContent = () => {
 
   const fetchRecentDocuments = useCallback(async () => {
     try {
-      const response = await axios.get<ApiResponse<RhDocument[]>>(`${API_BASE_URL}/api/rh-documents/documents/recent?limit=3`, { 
+      const response = await apiClient.get<ApiResponse<RhDocument[]>>(`${API_BASE_URL}/api/rh-documents/documents/recent?limit=3`, { 
         headers: { Authorization: `Bearer ${token}` } 
       });
       if (response.data.success && response.data.data) setRecentDocuments(response.data.data);
@@ -145,7 +145,7 @@ const RhDocumentsContent = () => {
 
   const fetchStatistics = useCallback(async () => {
     try {
-      const response = await axios.get<ApiResponse<Statistics>>(`${API_BASE_URL}/api/rh-documents/statistics`, { 
+      const response = await apiClient.get<ApiResponse<Statistics>>(`${API_BASE_URL}/api/rh-documents/statistics`, { 
         headers: { Authorization: `Bearer ${token}` } 
       });
       if (response.data.success && response.data.data) setStatistics(response.data.data);
@@ -172,7 +172,7 @@ const RhDocumentsContent = () => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      const response = await axios.post<ApiResponse<any>>(
+      const response = await apiClient.post<ApiResponse<any>>(
         `${API_BASE_URL}/api/rh-documents/folders`, 
         folderFormData, 
         { 
@@ -253,7 +253,7 @@ const RhDocumentsContent = () => {
         formData.append('folder_id', uploadFormData.folder_id);
       }
       
-      const response = await axios.post<ApiResponse<RhDocument>>(
+      const response = await apiClient.post<ApiResponse<RhDocument>>(
         `${API_BASE_URL}/api/rh-documents/documents/upload`, 
         formData, 
         { 
@@ -297,7 +297,7 @@ const RhDocumentsContent = () => {
 
   const handleDownloadDocument = async (documentId: number, documentName: string) => {
     try {
-      const response = await axios.get(
+      const response = await apiClient.get(
         `${API_BASE_URL}/api/rh-documents/documents/${documentId}/download`, 
         { 
           headers: { Authorization: `Bearer ${token}` }, 
@@ -340,7 +340,7 @@ const RhDocumentsContent = () => {
     });
     if (result.isConfirmed) {
       try {
-        await axios.delete(`${API_BASE_URL}/api/rh-documents/documents/${id}`, { 
+        await apiClient.delete(`${API_BASE_URL}/api/rh-documents/documents/${id}`, { 
           headers: { Authorization: `Bearer ${token}` } 
         });
         await Promise.all([

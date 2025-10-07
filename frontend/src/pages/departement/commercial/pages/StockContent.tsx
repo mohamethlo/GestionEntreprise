@@ -23,7 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Swal from "sweetalert2";
 import "sweetalert2/dist/sweetalert2.min.css";
-import axios from "axios";
+import apiClient from '@/api/axiosConfig';
 
 // Configuration API
 const API_BASE_URL = "http://localhost:5000";
@@ -113,7 +113,7 @@ const StockContent = () => {
   const fetchArticles = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await axios.get<ApiResponse<Article[]>>(
+      const response = await apiClient.get<ApiResponse<Article[]>>(
         `${API_BASE_URL}/api/inventory`,
         {
           headers: { Authorization: `Bearer ${token}` }
@@ -141,7 +141,7 @@ const StockContent = () => {
   // Récupérer la liste des catégories
   const fetchCategories = useCallback(async () => {
     try {
-      const response = await axios.get<ApiResponse<Category[]>>(
+      const response = await apiClient.get<ApiResponse<Category[]>>(
         `${API_BASE_URL}/api/inventory/categories`,
         {
           headers: { Authorization: `Bearer ${token}` }
@@ -264,7 +264,7 @@ const StockContent = () => {
       
       const method = currentArticleId ? 'put' : 'post';
       
-      const response = await axios[method]<ApiResponse<unknown>>(
+      const response = await apiClient[method]<ApiResponse<unknown>>(
         url,
         formDataToSend,
         {
@@ -323,7 +323,7 @@ const StockContent = () => {
     
     if (result.isConfirmed) {
       try {
-        await axios.delete(`${API_BASE_URL}/api/inventory/${id}`, {
+        await apiClient.delete(`${API_BASE_URL}/api/inventory/${id}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         
@@ -365,7 +365,7 @@ const StockContent = () => {
 
     setIsSubmitting(true);
     try {
-      const response = await axios.patch<ApiResponse<unknown>>(
+      const response = await apiClient.patch<ApiResponse<unknown>>(
         `${API_BASE_URL}/api/inventory/${selectedArticle.id}/quantity`,
         { quantity: ajustementForm.quantity },
         {
@@ -416,7 +416,7 @@ const StockContent = () => {
     
     setIsSubmitting(true);
     try {
-      const response = await axios.post<ApiResponse<unknown>>(
+      const response = await apiClient.post<ApiResponse<unknown>>(
         `${API_BASE_URL}/api/inventory/${selectedArticle.id}/outbound`,
         { 
           quantity: sortieForm.quantity,

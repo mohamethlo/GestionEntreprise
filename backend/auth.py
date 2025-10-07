@@ -54,7 +54,7 @@ def login():
 
     access_token = create_access_token(
         identity=str(user.id),  # ⚠️ toujours string pour JWT
-        expires_delta=timedelta(minutes=30)
+        expires_delta=timedelta(minutes=120)
     )
 
     return jsonify({

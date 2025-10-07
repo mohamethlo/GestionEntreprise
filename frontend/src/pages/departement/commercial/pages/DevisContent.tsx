@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Swal from "sweetalert2";
 import "sweetalert2/dist/sweetalert2.min.css";
-import axios from "axios";
+import apiClient from '@/api/axiosConfig';
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -80,7 +80,7 @@ const DevisContent = () => {
   const fetchDevis = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await axios.get<ApiResponse<Devis[]>>(
+      const response = await apiClient.get<ApiResponse<Devis[]>>(
         `${API_BASE_URL}/api/devis`,
         {
           headers: { Authorization: `Bearer ${token}` }
@@ -108,7 +108,7 @@ const DevisContent = () => {
   // Récupérer la liste des techniciens
   const fetchTechniciens = useCallback(async () => {
     try {
-      const response = await axios.get<ApiResponse<User[]>>(
+      const response = await apiClient.get<ApiResponse<User[]>>(
         `${API_BASE_URL}/api/users/techniciens`,
         {
           headers: { Authorization: `Bearer ${token}` }
@@ -160,7 +160,7 @@ const DevisContent = () => {
       
       const method = currentDevisId ? 'put' : 'post';
       
-      const response = await axios[method]<ApiResponse<Devis>>(
+      const response = await apiClient[method]<ApiResponse<Devis>>(
         url,
         formData,
         {
@@ -224,7 +224,7 @@ const DevisContent = () => {
     
     if (result.isConfirmed) {
       try {
-        await axios.delete(`${API_BASE_URL}/api/devis/${id}`, {
+        await apiClient.delete(`${API_BASE_URL}/api/devis/${id}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         
@@ -262,7 +262,7 @@ const DevisContent = () => {
     if (!currentDevisId || !selectedTechnicien) return;
     
     try {
-      const response = await axios.put<ApiResponse<Devis>>(
+      const response = await apiClient.put<ApiResponse<Devis>>(
         `${API_BASE_URL}/api/devis/${currentDevisId}/assign`,
         { assigned_to: selectedTechnicien },
         {

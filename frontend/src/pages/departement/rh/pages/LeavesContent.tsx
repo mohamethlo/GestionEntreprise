@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Swal from "sweetalert2";
 import "sweetalert2/dist/sweetalert2.min.css";
-import axios from "axios";
+import apiClient from '@/api/axiosConfig';
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -155,7 +155,7 @@ const LeavesContent = () => {
   useEffect(() => {
     const getUserInfo = async () => {
       try {
-        const response = await axios.get(`${API_BASE_URL}/api/users/me`, {
+        const response = await apiClient.get(`${API_BASE_URL}/api/users/me`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (response.data.success) {
@@ -172,7 +172,7 @@ const LeavesContent = () => {
   const fetchLeaves = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await axios.get<ApiResponse<Leave[]>>(
+      const response = await apiClient.get<ApiResponse<Leave[]>>(
         `${API_BASE_URL}/api/leaves`,
         {
           headers: { Authorization: `Bearer ${token}` }
@@ -207,7 +207,7 @@ const LeavesContent = () => {
     if (!currentUserId) return;
     
     try {
-      const response = await axios.get<ApiResponse<LeaveBalance>>(
+      const response = await apiClient.get<ApiResponse<LeaveBalance>>(
         `${API_BASE_URL}/api/leaves/balance/${currentUserId}`,
         {
           headers: { Authorization: `Bearer ${token}` }
@@ -282,7 +282,7 @@ const LeavesContent = () => {
       
       const method = currentLeaveId ? 'put' : 'post';
       
-      const response = await axios[method]<ApiResponse<Leave>>(
+      const response = await apiClient[method]<ApiResponse<Leave>>(
         url,
         {
           ...formData,
@@ -343,7 +343,7 @@ const LeavesContent = () => {
     
     if (result.isConfirmed) {
       try {
-        await axios.put(`${API_BASE_URL}/api/leaves/${id}/approve`, {}, {
+        await apiClient.put(`${API_BASE_URL}/api/leaves/${id}/approve`, {}, {
           headers: { Authorization: `Bearer ${token}` }
         });
         
@@ -386,7 +386,7 @@ const LeavesContent = () => {
     
     if (reason) {
       try {
-        await axios.put(
+        await apiClient.put(
           `${API_BASE_URL}/api/leaves/${id}/reject`,
           { rejection_reason: reason },
           {
@@ -430,7 +430,7 @@ const LeavesContent = () => {
     
     if (result.isConfirmed) {
       try {
-        await axios.delete(`${API_BASE_URL}/api/leaves/${id}`, {
+        await apiClient.delete(`${API_BASE_URL}/api/leaves/${id}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         

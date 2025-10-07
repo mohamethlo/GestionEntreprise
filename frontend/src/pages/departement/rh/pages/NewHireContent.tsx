@@ -32,7 +32,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Swal from "sweetalert2";
 import "sweetalert2/dist/sweetalert2.min.css";
-import axios from "axios";
+import apiClient from '@/api/axiosConfig';
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 
@@ -111,7 +111,7 @@ const NewHireContent = () => {
       if (filtreDomaine !== "Tous") params.domaine = filtreDomaine;
       if (filtreStatus !== "Tous") params.status = filtreStatus;
 
-      const response = await axios.get<ApiResponse<Candidature[]>>(url, {
+      const response = await apiClient.get<ApiResponse<Candidature[]>>(url, {
         headers: { Authorization: `Bearer ${token}` },
         params
       });
@@ -141,7 +141,7 @@ const NewHireContent = () => {
   // ------------------- Fetch stats -------------------
   const fetchStats = useCallback(async () => {
     try {
-      const response = await axios.get<ApiResponse<Stats>>(`${API_BASE_URL}/api/candidatures/stats`, {
+      const response = await apiClient.get<ApiResponse<Stats>>(`${API_BASE_URL}/api/candidatures/stats`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (response.data.success && response.data.data) {
@@ -226,7 +226,7 @@ const NewHireContent = () => {
     setIsSubmitting(true);
     try {
       if(currentCandidatureId) {
-        await axios.put(`${API_BASE_URL}/api/candidatures/${currentCandidatureId}`, formData, {
+        await apiClient.put(`${API_BASE_URL}/api/candidatures/${currentCandidatureId}`, formData, {
           headers: { Authorization: `Bearer ${token}`, 'Content-Type':'application/json' }
         });
         Swal.fire({
@@ -252,7 +252,7 @@ const NewHireContent = () => {
         const formToSend = new FormData();
         Object.entries(formData).forEach(([k,v])=>formToSend.append(k,v));
         formToSend.append("fichier", selectedFile);
-        await axios.post(`${API_BASE_URL}/api/candidatures/`, formToSend, { headers:{ Authorization:`Bearer ${token}` } });
+        await apiClient.post(`${API_BASE_URL}/api/candidatures/`, formToSend, { headers:{ Authorization:`Bearer ${token}` } });
         Swal.fire({
           title:'Succès', 
           text:'Candidature créée', 
@@ -286,7 +286,7 @@ const NewHireContent = () => {
   // ------------------- Download -------------------
   const handleDownload = async (id:number, nom:string) => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/api/candidatures/${id}/download`, {
+      const response = await apiClient.get(`${API_BASE_URL}/api/candidatures/${id}/download`, {
         headers:{ Authorization:`Bearer ${token}` },
         responseType:'blob'
       });
@@ -326,7 +326,7 @@ const NewHireContent = () => {
     });
     if(result.isConfirmed){
       try {
-        await axios.delete(`${API_BASE_URL}/api/candidatures/${id}`, { headers:{ Authorization:`Bearer ${token}` } });
+        await apiClient.delete(`${API_BASE_URL}/api/candidatures/${id}`, { headers:{ Authorization:`Bearer ${token}` } });
         Swal.fire({
           title:'Supprimé!',
           text:'Candidature supprimée',
@@ -354,7 +354,7 @@ const NewHireContent = () => {
   // ------------------- Update status -------------------
   const handleStatusChange = async (id:number, newStatus:string) => {
     try {
-      await axios.put(`${API_BASE_URL}/api/candidatures/${id}/status`, { status: newStatus }, { headers:{ Authorization:`Bearer ${token}` } });
+      await apiClient.put(`${API_BASE_URL}/api/candidatures/${id}/status`, { status: newStatus }, { headers:{ Authorization:`Bearer ${token}` } });
       setCandidatures(prev => prev.map(c => c.id===id ? {...c,status:newStatus} : c));
       await fetchStats();
       Swal.fire({

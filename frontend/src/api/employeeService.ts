@@ -1,6 +1,5 @@
 // src/api/employeeService.ts
-import axios from "axios";
-
+import apiClient from './axiosConfig';
 const API_BASE_URL = "http://localhost:5000/api/employees";
 
 export interface EmployeeData {
@@ -67,25 +66,25 @@ export interface UpdateEmployeeDetailsData {
 export const employeeService = {
   // Récupère tous les utilisateurs avec leurs détails employés
   async getAll(): Promise<EmployeeData[]> {
-    const response = await axios.get(API_BASE_URL);
+    const response = await apiClient.get(API_BASE_URL);
     return response.data;
   },
 
   // Crée ou met à jour les détails d'un employé pour un utilisateur
   async updateEmployeeDetails(userId: number, data: UpdateEmployeeDetailsData) {
-    const response = await axios.post(`${API_BASE_URL}/user/${userId}`, data);
+    const response = await apiClient.post(`${API_BASE_URL}/user/${userId}`, data);
     return response.data;
   },
 
   // Récupère les détails d'un employé spécifique
   async getById(employeeId: number) {
-    const response = await axios.get(`${API_BASE_URL}/${employeeId}`);
+    const response = await apiClient.get(`${API_BASE_URL}/${employeeId}`);
     return response.data;
   },
 
   // Supprime la fiche employé (pas l'utilisateur)
   async deleteEmployeeDetails(employeeId: number) {
-    const response = await axios.delete(`${API_BASE_URL}/${employeeId}`);
+    const response = await apiClient.delete(`${API_BASE_URL}/${employeeId}`);
     return response.data;
   },
 };
