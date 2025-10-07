@@ -15,4 +15,4 @@ from .misc import Approvisionnement, Installation, QuoteRequest, Devis, Reminder
 from .leaves import Leave
 from .employee import Employee
 from .candidatures import Candidature
-
+from .rh_documents import RhDocument, RhFolder

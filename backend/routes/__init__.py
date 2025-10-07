@@ -16,6 +16,7 @@ from .inventory import inventory_bp
 from routes.leaves import leaves_bp
 from .employee import employee_bp
 from routes.candidatures import candidatures_bp
+from .rh_documents import rh_documents_bp
 
 def register_blueprints(app: Flask):
     """Enregistre tous les blueprints du projet"""
@@ -38,3 +39,4 @@ def register_blueprints(app: Flask):
     app.register_blueprint(leaves_bp, url_prefix="/api/leaves")
     app.register_blueprint(employee_bp, url_prefix="/api/employees")
     app.register_blueprint(candidatures_bp, url_prefix="/api/candidatures")
+    app.register_blueprint(rh_documents_bp, url_prefix="/api/rh-documents") 

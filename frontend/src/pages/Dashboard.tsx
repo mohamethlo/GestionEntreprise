@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 const netsystemeLogo = "/logo/netsysteme.png";
 
@@ -25,6 +26,7 @@ const Dashboard = () => {
   const [hoveredDepartment, setHoveredDepartment] = useState<string | null>(null);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [particles, setParticles] = useState<Array<{id: number, x: number, y: number}>>([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -33,6 +35,24 @@ const Dashboard = () => {
     window.addEventListener('mousemove', handleMouseMove);
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
+
+  const handleLogout = () => {
+    // Animation de déconnexion
+    setIsRotating(false);
+    
+    // Effet visuel de déconnexion
+    const logoutParticles = Array.from({ length: 15 }, (_, i) => ({
+      id: Date.now() + i,
+      x: Math.random() * 200 - 100,
+      y: Math.random() * 200 - 100
+    }));
+    setParticles(logoutParticles);
+    
+    setTimeout(() => {
+      // Redirection vers la page de login
+      navigate("/login");
+    }, 800);
+  };
 
   const handleDepartmentClick = (departmentId: string) => {
     setIsRotating(false);
@@ -49,7 +69,7 @@ const Dashboard = () => {
     setTimeout(() => setParticles([]), 1000);
 
     setTimeout(() => {
-      window.location.href = `/department/${departmentId}`;
+      navigate(`/department/${departmentId}`);
     }, 1000);
   };
 
@@ -129,7 +149,7 @@ const Dashboard = () => {
         ))}
       </div>
 
-      {/* Header amélioré */}
+      {/* Header amélioré avec bouton de déconnexion */}
       <div className="relative z-10 p-6">
         <div className="flex justify-between items-center backdrop-blur-xl bg-white/5 rounded-2xl p-4 border border-white/10 shadow-2xl">
           <div className="flex items-center space-x-4">
@@ -149,6 +169,46 @@ const Dashboard = () => {
               <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
               <span className="text-sm text-emerald-300 font-medium">Système Actif</span>
             </div>
+            
+            {/* Bouton de déconnexion */}
+            <button
+              onClick={handleLogout}
+              className="group relative flex items-center gap-2 px-4 py-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 hover:border-red-500/50 transition-all duration-300 backdrop-blur-sm"
+            >
+              {/* Effet de lueur au survol */}
+              <div className="absolute inset-0 rounded-lg bg-red-500/0 group-hover:bg-red-500/10 blur-sm transition-all duration-300" />
+              
+              {/* Icone de déconnexion */}
+              <svg 
+                className="w-4 h-4 text-red-400 group-hover:text-red-300 transition-colors duration-300" 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  strokeWidth={2} 
+                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" 
+                />
+              </svg>
+              
+              {/* Texte */}
+              <span className="text-sm text-red-300 group-hover:text-red-200 font-medium transition-colors duration-300">
+                Déconnexion
+              </span>
+              
+              {/* Animation de particules au clic */}
+              {particles.map(particle => (
+                <div
+                  key={particle.id}
+                  className="absolute top-1/2 left-1/2 w-1 h-1 rounded-full bg-red-400 animate-particle-burst"
+                  style={{
+                    transform: `translate(${particle.x}px, ${particle.y}px)`,
+                  }}
+                />
+              ))}
+            </button>
           </div>
         </div>
       </div>

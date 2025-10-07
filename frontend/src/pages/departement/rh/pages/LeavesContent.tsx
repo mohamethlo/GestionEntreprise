@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CalendarCheck, Clock, CheckCircle2, XCircle, BarChart, Settings, Plus, Download, Filter, Loader2, Calendar, User } from "lucide-react";
+import { CalendarCheck, Clock, CheckCircle2, XCircle, BarChart, Settings, Plus, Download, Filter, Loader2, Calendar, User, PieChart } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -51,6 +51,79 @@ interface ApiResponse<T> {
   message?: string;
 }
 
+// Composant pour le diagramme circulaire
+const PieChartComponent = ({ approved, rejected, pending }: { approved: number; rejected: number; pending: number }) => {
+  const total = approved + rejected + pending;
+  if (total === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-32 text-gray-500">
+        <PieChart className="h-8 w-8 mb-2" />
+        <p className="text-sm">Aucune donnée</p>
+      </div>
+    );
+  }
+
+  const approvedPercentage = (approved / total) * 100;
+  const rejectedPercentage = (rejected / total) * 100;
+  const pendingPercentage = (pending / total) * 100;
+
+  return (
+    <div className="relative w-32 h-32 mx-auto mb-4">
+      <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90">
+        {/* Fond */}
+        <circle cx="50" cy="50" r="40" fill="none" stroke="#e5e7eb" strokeWidth="20" />
+        
+        {/* Approuvé */}
+        <circle
+          cx="50"
+          cy="50"
+          r="40"
+          fill="none"
+          stroke="#10b981"
+          strokeWidth="20"
+          strokeDasharray={`${approvedPercentage} ${100 - approvedPercentage}`}
+          strokeDashoffset="0"
+          className="transition-all duration-1000 ease-out"
+        />
+        
+        {/* Refusé */}
+        <circle
+          cx="50"
+          cy="50"
+          r="40"
+          fill="none"
+          stroke="#ef4444"
+          strokeWidth="20"
+          strokeDasharray={`${rejectedPercentage} ${100 - rejectedPercentage}`}
+          strokeDashoffset={-approvedPercentage}
+          className="transition-all duration-1000 ease-out"
+        />
+        
+        {/* En attente */}
+        <circle
+          cx="50"
+          cy="50"
+          r="40"
+          fill="none"
+          stroke="#f59e0b"
+          strokeWidth="20"
+          strokeDasharray={`${pendingPercentage} ${100 - pendingPercentage}`}
+          strokeDashoffset={-(approvedPercentage + rejectedPercentage)}
+          className="transition-all duration-1000 ease-out"
+        />
+      </svg>
+      
+      {/* Centre avec le total */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-lg font-bold text-gray-900">{total}</div>
+          <div className="text-xs text-gray-500">Total</div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const LeavesContent = () => {
   const token = useAuthToken();
   const [leavesList, setLeavesList] = useState<Leave[]>([]);
@@ -69,6 +142,13 @@ const LeavesContent = () => {
     end_date: "",
     duration: 0,
     reason: "",
+  });
+
+  // Statistiques pour le diagramme
+  const [leaveStats, setLeaveStats] = useState({
+    approved: 0,
+    rejected: 0,
+    pending: 0
   });
 
   // Récupérer l'ID de l'utilisateur connecté
@@ -102,6 +182,13 @@ const LeavesContent = () => {
       if (response.data.success && response.data.data) {
         setLeavesList(response.data.data);
         setPendingLeaves(response.data.data.filter(l => l.status === 'pending'));
+        
+        // Calculer les statistiques pour le diagramme
+        const approved = response.data.data.filter(l => l.status === 'approved').length;
+        const rejected = response.data.data.filter(l => l.status === 'rejected').length;
+        const pending = response.data.data.filter(l => l.status === 'pending').length;
+        
+        setLeaveStats({ approved, rejected, pending });
       }
     } catch (error) {
       console.error("Erreur lors de la récupération des congés:", error);
@@ -371,7 +458,7 @@ const LeavesContent = () => {
       case 'pending':
         return <Badge variant="secondary" className="bg-orange-100 text-orange-600 hover:bg-orange-200 transition-colors">En attente</Badge>;
       case 'approved':
-        return <Badge className="bg-green-500 hover:bg-green-600 transition-colors">Approuvé</Badge>;
+        return <Badge className="bg-green-500 hover:bg-green-600 transition-colors" style={{color:"black"}}>Approuvé</Badge>;
       case 'rejected':
         return <Badge variant="destructive" className="hover:bg-red-600 transition-colors">Refusé</Badge>;
       default:
@@ -524,70 +611,42 @@ const LeavesContent = () => {
               </CardContent>
             </Card>
 
-            {/* Statistiques rapides */}
+            {/* Statistiques rapides avec diagramme */}
             <Card className="border-0 shadow-lg bg-gradient-to-br from-purple-50 via-white to-indigo-50 hover:shadow-xl transition-all duration-500 transform hover:-translate-y-1 backdrop-blur-sm">
               <CardHeader>
                 <CardTitle className="text-xl font-semibold text-gray-900 flex items-center gap-2">
                   <div className="p-2 bg-purple-100 rounded-lg">
-                    <BarChart className="h-5 w-5 text-purple-600" />
+                    <PieChart className="h-5 w-5 text-purple-600" />
                   </div>
                   Vue d'ensemble
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                {leaveBalance ? (
-                  <div className="space-y-6">
-                    <div className="space-y-3 group">
-                      <div className="flex justify-between text-sm">
-                        <span className="font-medium text-gray-700 group-hover:text-purple-600 transition-colors">Congés Payés</span>
-                        <span className="font-semibold text-gray-900">
-                          {leaveBalance.conges_payes.used}/{leaveBalance.conges_payes.total} jours
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                        <div 
-                          className="h-3 rounded-full bg-gradient-to-r from-blue-400 to-blue-600 transition-all duration-1000 ease-out group-hover:from-blue-500 group-hover:to-blue-700"
-                          style={{ width: `${(leaveBalance.conges_payes.used / leaveBalance.conges_payes.total) * 100}%` }}
-                        ></div>
-                      </div>
+                {/* Diagramme circulaire */}
+                <div className="text-center border-b border-gray-100 pb-4">
+                  <PieChartComponent 
+                    approved={leaveStats.approved}
+                    rejected={leaveStats.rejected}
+                    pending={leaveStats.pending}
+                  />
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div className="flex items-center justify-center gap-1">
+                      <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                      <span style={{color:"black"}}>Approuvé</span>
+                      <span className="font-semibold">({leaveStats.approved})</span>
                     </div>
-
-                    <div className="space-y-3 group">
-                      <div className="flex justify-between text-sm">
-                        <span className="font-medium text-gray-700 group-hover:text-purple-600 transition-colors">RTT</span>
-                        <span className="font-semibold text-gray-900">
-                          {leaveBalance.rtt.used}/{leaveBalance.rtt.total} jours
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                        <div 
-                          className="h-3 rounded-full bg-gradient-to-r from-purple-400 to-purple-600 transition-all duration-1000 ease-out group-hover:from-purple-500 group-hover:to-purple-700"
-                          style={{ width: `${(leaveBalance.rtt.used / leaveBalance.rtt.total) * 100}%` }}
-                        ></div>
-                      </div>
+                    <div className="flex items-center justify-center gap-1">
+                      <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                      <span style={{color:"black"}}>Refusé</span>
+                      <span className="font-semibold">({leaveStats.rejected})</span>
                     </div>
-
-                    <div className="space-y-3 group">
-                      <div className="flex justify-between text-sm">
-                        <span className="font-medium text-gray-700 group-hover:text-purple-600 transition-colors">Congés Maladie</span>
-                        <span className="font-semibold text-gray-900">
-                          {leaveBalance.maladie.used}/{leaveBalance.maladie.total} jours
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-                        <div 
-                          className="h-3 rounded-full bg-gradient-to-r from-orange-400 to-orange-600 transition-all duration-1000 ease-out group-hover:from-orange-500 group-hover:to-orange-700"
-                          style={{ width: `${(leaveBalance.maladie.used / leaveBalance.maladie.total) * 100}%` }}
-                        ></div>
-                      </div>
+                    <div className="flex items-center justify-center gap-1">
+                      <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
+                      <span style={{color:"black"}}>En attente</span>
+                      <span className="font-semibold">({leaveStats.pending})</span>
                     </div>
                   </div>
-                ) : (
-                  <div className="text-center py-4 text-gray-500">
-                    <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-purple-600" />
-                    Chargement du solde...
-                  </div>
-                )}
+                </div>
               </CardContent>
             </Card>
           </div>
