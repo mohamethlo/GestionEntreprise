@@ -14,6 +14,7 @@ from .devis import devis_bp
 from .inventory import inventory_bp
 from .expenses import expenses_bp
 from .leaves import leaves_bp
+from .employee import employee_bp
 from .candidatures import candidatures_bp
 from .rh_documents import rh_documents_bp  # ← AJOUTER CETTE LIGNE
 
@@ -36,5 +37,6 @@ def register_blueprints(app: Flask):
     app.register_blueprint(inventory_bp, url_prefix="/api/inventory")
     app.register_blueprint(expenses_bp, url_prefix="/api/expenses")
     app.register_blueprint(leaves_bp, url_prefix="/api/leaves")
+    app.register_blueprint(employee_bp, url_prefix="/api/employees")
     app.register_blueprint(candidatures_bp, url_prefix="/api/candidatures")
     app.register_blueprint(rh_documents_bp, url_prefix="/api/rh-documents") 
