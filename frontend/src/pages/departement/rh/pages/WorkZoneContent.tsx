@@ -15,6 +15,12 @@ const API_BASE_URL = FLASK_API_ROOT + "/api/work_locations";
 // Configuration Google Maps
 const GOOGLE_MAPS_API_KEY = "AIzaSyCtXq1hGhWTAR8mhAE923pIW7BGFVYP2a4";
 
+// Coordonnées par défaut en attendant le chargement des données
+const DEFAULT_CENTER = {
+  lat: 14.716677, 
+  lng: -17.467686
+};
+
 /**
  * Fonction d'aide pour les requêtes API avec gestion d'erreurs et JWT.
  */
@@ -49,8 +55,8 @@ const apiFetch = async (url, options = {}) => {
   return data;
 };
 
-// Composant pour la carte Google Maps - VERSION SIMPLIFIÉE ET CORRIGÉE
-const MapComponent = ({ zones, onLocationSelect, center = { lat: 14.716677, lng: -17.467686 }, mapId = "map" }) => {
+// Composant pour la carte Google Maps
+const MapComponent = ({ zones, onLocationSelect, center = DEFAULT_CENTER, mapId = "map" }) => {
   const [map, setMap] = useState(null);
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [circles, setCircles] = useState([]);
@@ -183,7 +189,19 @@ const MapComponent = ({ zones, onLocationSelect, center = { lat: 14.716677, lng:
       circles.forEach(circle => circle.setMap(null));
       const newCircles = [];
 
-      // Ajouter les nouvelles zones
+      // Trouver la zone de bureau principal pour centrer la carte
+      const bureauPrincipal = zones.find(zone => zone.type === 'bureau');
+      
+      // Centrer la carte sur le bureau principal s'il existe
+      if (bureauPrincipal && bureauPrincipal.latitude && bureauPrincipal.longitude) {
+        const bureauCenter = {
+          lat: parseFloat(bureauPrincipal.latitude),
+          lng: parseFloat(bureauPrincipal.longitude)
+        };
+        map.setCenter(bureauCenter);
+      }
+
+      // Ajouter les zones
       zones.forEach(zone => {
         if (zone.latitude && zone.longitude) {
           const position = {
@@ -193,8 +211,8 @@ const MapComponent = ({ zones, onLocationSelect, center = { lat: 14.716677, lng:
 
           // Définir les couleurs selon le type de zone
           const isBureau = zone.type === 'bureau';
-          const strokeColor = isBureau ? '#2563EB' : '#D97706'; // Bleu pour bureau, Jaune/Ambre pour chantier
-          const fillColor = isBureau ? '#3B82F6' : '#F59E0B'; // Bleu pour bureau, Jaune/Ambre pour chantier
+          const strokeColor = isBureau ? '#2563EB' : '#D97706';
+          const fillColor = isBureau ? '#3B82F6' : '#F59E0B';
 
           const circle = new window.google.maps.Circle({
             strokeColor: strokeColor,
@@ -468,7 +486,7 @@ const CreateZoneModal = ({ isOpen, onClose, onSave, zones, isLoading }) => {
               mapId="modal-map"
               zones={zones}
               onLocationSelect={handleLocationSelect}
-              center={selectedLocation || { lat: 14.716677, lng: -17.467686 }}
+              center={selectedLocation || DEFAULT_CENTER}
             />
           </div>
         </div>
@@ -593,6 +611,11 @@ const WorkZoneContent = () => {
       }
     }
   };
+
+  // Trouver la zone de bureau principal
+  const bureauPrincipal = useMemo(() => {
+    return zones.find(zone => zone.type === 'bureau');
+  }, [zones]);
 
   const totalZones = useMemo(() => zones.length, [zones]);
   const bureauZones = useMemo(() => zones.filter(z => z.type === 'bureau').length, [zones]);
@@ -721,6 +744,11 @@ const WorkZoneContent = () => {
                 <MapPin className="h-5 w-5 text-white"/>
               </div>
               Carte Interactive des Zones
+              {bureauPrincipal && (
+                <span className="text-sm font-normal text-blue-600 ml-2">
+                  • Centrée sur {bureauPrincipal.name}
+                </span>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -746,7 +774,7 @@ const WorkZoneContent = () => {
         <div className="space-y-6">
           <Card className="bg-white/90 backdrop-blur-xl border-0 shadow-2xl rounded-2xl overflow-hidden transform hover:shadow-indigo-500/20 transition-all duration-500">
             <CardHeader className="bg-gradient-to-r from-indigo-500/10 to-purple-500/10">
-              <CardTitle className="text-lg flex items-center gap-2">
+              <CardTitle className="text-lg flex items-center gap-2" style={{color:"black"}}>
                 <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-lg">
                   <Zap className="h-5 w-5 text-white"/>
                 </div>
@@ -755,11 +783,33 @@ const WorkZoneContent = () => {
             </CardHeader>
             <CardContent className="space-y-4 p-6">
               <div className="space-y-3">
-                {zones.slice(0, 3).map((zone, index) => (
+                {/* Afficher d'abord la zone de bureau principal si elle existe */}
+                {bureauPrincipal && (
+                  <div className="flex items-center gap-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border-2 border-blue-200 shadow-sm hover:shadow-md hover:border-blue-300 transition-all duration-300 transform hover:scale-102">
+                    <div className="p-2.5 rounded-xl shadow-lg bg-gradient-to-br from-blue-400 to-blue-600">
+                      <Building className="h-5 w-5 text-white"/>
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-semibold text-gray-900">{bureauPrincipal.name}</p>
+                      <p className="text-xs text-gray-600 capitalize mt-1">
+                        <span className="inline-flex items-center gap-1">
+                          {bureauPrincipal.type} • {bureauPrincipal.radius}m
+                        </span>
+                      </p>
+                      <p className="text-xs text-blue-600 font-medium mt-1">Zone principale</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Afficher les autres zones */}
+                {zones
+                  .filter(zone => zone.id !== bureauPrincipal?.id)
+                  .slice(0, 2)
+                  .map((zone, index) => (
                   <div 
                     key={zone.id} 
                     className="flex items-center gap-3 p-4 bg-gradient-to-r from-gray-50 to-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:border-indigo-200 transition-all duration-300 transform hover:scale-102"
-                    style={{animationDelay: `${index * 100}ms`}}
+                    style={{animationDelay: `${(index + 1) * 100}ms`}}
                   >
                     <div className={`p-2.5 rounded-xl shadow-lg ${
                       zone.type === 'bureau' 
@@ -783,7 +833,7 @@ const WorkZoneContent = () => {
                 ))}
               </div>
               
-              {zones.length > 3 && (
+              {(zones.length > 0) && (
                 <Button
                   variant="outline"
                   className="w-full border-2 border-indigo-200 hover:bg-indigo-50 hover:border-indigo-300 transition-all duration-300 rounded-xl font-medium"
@@ -792,12 +842,13 @@ const WorkZoneContent = () => {
                     html: `
                       <div class="text-left space-y-2 max-h-96 overflow-y-auto">
                         ${zones.map(z => `
-                          <div class="p-3 border-b border-gray-200">
+                          <div class="p-3 border-b border-gray-200 ${z.type === 'bureau' ? 'bg-blue-50 rounded-lg' : ''}">
                             <div class="flex justify-between items-start">
                               <div>
                                 <p class="font-semibold text-gray-900">${z.name}</p>
                                 <p class="text-sm text-gray-600 capitalize">${z.type} • ${z.radius}m</p>
                                 ${z.address ? `<p class="text-xs text-gray-500 mt-1">${z.address}</p>` : ''}
+                                ${z.type === 'bureau' ? '<p class="text-xs text-blue-600 font-medium mt-1">Zone principale</p>' : ''}
                               </div>
                               <span class="px-2 py-1 text-xs rounded-full ${
                                 z.type === 'bureau' ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'
@@ -820,7 +871,7 @@ const WorkZoneContent = () => {
 
           <Card className="bg-white/90 backdrop-blur-xl border-0 shadow-2xl rounded-2xl overflow-hidden transform hover:shadow-purple-500/20 transition-all duration-500">
             <CardHeader className="bg-gradient-to-r from-purple-500/10 to-pink-500/10">
-              <CardTitle className="text-lg flex items-center gap-2">
+              <CardTitle className="text-lg flex items-center gap-2" style={{color:"black"}}>
                 <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg">
                   <Settings className="h-5 w-5 text-white"/>
                 </div>
@@ -843,11 +894,29 @@ const WorkZoneContent = () => {
                 </div>
               ) : (
                 <div className="space-y-3 max-h-64 overflow-y-auto pr-2">
-                  {zones.map((zone, index) => (
+                  {/* Afficher la zone de bureau principal en premier si elle existe */}
+                  {bureauPrincipal && (
+                    <div className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border-2 border-blue-200 group hover:border-blue-300 hover:shadow-lg transition-all duration-300 transform hover:scale-102">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg shadow-md transform group-hover:rotate-12 transition-transform duration-300 bg-gradient-to-br from-blue-400 to-blue-600">
+                          <Building className="h-4 w-4 text-white"/>
+                        </div>
+                        <span className="text-sm font-semibold text-gray-900">{bureauPrincipal.name}</span>
+                      </div>
+                      <div className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full font-medium">
+                        Principal
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Afficher les autres zones */}
+                  {zones
+                    .filter(zone => zone.id !== bureauPrincipal?.id)
+                    .map((zone, index) => (
                     <div 
                       key={zone.id} 
                       className="flex items-center justify-between p-3 bg-gradient-to-r from-gray-50 to-white rounded-xl border border-gray-200 group hover:border-indigo-300 hover:shadow-lg transition-all duration-300 transform hover:scale-102"
-                      style={{animationDelay: `${index * 50}ms`}}
+                      style={{animationDelay: `${(index + 1) * 50}ms`}}
                     >
                       <div className="flex items-center gap-3">
                         <div className={`p-2 rounded-lg shadow-md transform group-hover:rotate-12 transition-transform duration-300 ${
